@@ -72,6 +72,10 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
+    // Supabase
+    implementation("io.supabase.kt:postgrest-kt:2.2.0")
+    implementation("io.supabase.kt:gotrue-kt:2.2.0")
+
     // Testing (Your existing dependencies)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
