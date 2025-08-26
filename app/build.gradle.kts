@@ -1,9 +1,9 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp) // Add this for Room
-    alias(libs.plugins.hilt) // Add this for Hilt
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.compose.compiler)
 }
 
 android {
@@ -37,15 +37,11 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1" // Add this for compatibility
+        kotlinCompilerExtensionVersion = "1.5.1"
     }
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
-    }
-}
+// The conflicting kotlin {} block has been removed.
 
 dependencies {
     // Core & UI (Your existing dependencies)
@@ -75,6 +71,10 @@ dependencies {
     // Supabase
     implementation("io.supabase.kt:postgrest-kt:2.2.0")
     implementation("io.supabase.kt:gotrue-kt:2.2.0")
+
+    // Location & Images
+    implementation(libs.play.services.location)
+    implementation(libs.coil.compose)
 
     // Testing (Your existing dependencies)
     testImplementation(libs.junit)
