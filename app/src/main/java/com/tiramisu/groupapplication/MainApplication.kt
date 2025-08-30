@@ -1,4 +1,4 @@
-package com.tiramisu.groupapplication // Make sure this package name is correct!
+package com.tiramisu.groupapplication
 
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp

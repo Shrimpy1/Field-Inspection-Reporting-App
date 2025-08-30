@@ -1,9 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp) // Add this for Room
-    alias(libs.plugins.hilt) // Add this for Hilt
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.compose.compiler)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -37,15 +38,11 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1" // Add this for compatibility
+        kotlinCompilerExtensionVersion = "1.5.1"
     }
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
-    }
-}
+// The conflicting kotlin {} block has been removed.
 
 dependencies {
     // Core & UI (Your existing dependencies)
@@ -66,6 +63,9 @@ dependencies {
     // Room Database (Offline Storage)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.firestore)
     ksp(libs.androidx.room.compiler)
 
     // Hilt (Dependency Injection)
@@ -75,6 +75,13 @@ dependencies {
     // Supabase
     implementation("io.supabase.kt:postgrest-kt:2.2.0")
     implementation("io.supabase.kt:gotrue-kt:2.2.0")
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.2.2"))
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.ktor:ktor-client-android:3.2.3")
+
+    // Location & Images
+    implementation(libs.play.services.location)
+    implementation(libs.coil.compose)
 
     // Testing (Your existing dependencies)
     testImplementation(libs.junit)
