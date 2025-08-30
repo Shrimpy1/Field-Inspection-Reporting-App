@@ -30,6 +30,30 @@ android {
                 "proguard-rules.pro"
             )
         }
+        debug {
+            buildConfigField(
+                "String",
+                "SUPABASE_URL",
+                "\"https://ynwdghcwlazwijeemzgm.supabase.co\""
+            )
+            buildConfigField(
+                "String",
+                "SUPABASE_KEY",
+                "\"sb_publishable_vwq598uQ0H35qry6rYbetg_ST0QFsO3\""
+            )
+        }
+        release {
+            buildConfigField(
+                "String",
+                "SUPABASE_URL",
+                "\"https://ynwdghcwlazwijeemzgm.supabase.co\""
+            )
+            buildConfigField(
+                "String",
+                "SUPABASE_KEY",
+                "\"sb_publishable_vwq598uQ0H35qry6rYbetg_ST0QFsO3\""
+            )
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -37,10 +61,15 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
     }
+}
+
+kotlin {
+    jvmToolchain(11)
 }
 
 // The conflicting kotlin {} block has been removed.
