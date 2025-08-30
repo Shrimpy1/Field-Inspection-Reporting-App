@@ -4,7 +4,8 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.compose.compiler)
-    id("com.google.gms.google-services")
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -63,21 +64,20 @@ dependencies {
     // Room Database (Offline Storage)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.analytics)
-    implementation(libs.firebase.firestore)
     ksp(libs.androidx.room.compiler)
 
     // Hilt (Dependency Injection)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.firestore)
+
     // Supabase
-    implementation("io.supabase.kt:postgrest-kt:2.2.0")
-    implementation("io.supabase.kt:gotrue-kt:2.2.0")
-    implementation(platform("io.github.jan-tennert.supabase:bom:3.2.2"))
-    implementation("io.github.jan-tennert.supabase:postgrest-kt")
-    implementation("io.ktor:ktor-client-android:3.2.3")
+    implementation(platform(libs.supabase.bom))
+    implementation(libs.storage.kt)
 
     // Location & Images
     implementation(libs.play.services.location)
