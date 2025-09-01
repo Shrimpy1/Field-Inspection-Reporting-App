@@ -7,11 +7,13 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tiramisu.groupapplication.data.local.InspectionDao
-import com.tiramisu.groupapplication.data.model.InspectionReport
-import com.tiramisu.groupapplication.data.model.InspectionStatus
+import com.tiramisu.groupapplication.domain.enums.InspectionStatus
+import com.tiramisu.groupapplication.domain.model.Inspection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 @HiltViewModel
 class ReportDetailViewModel @Inject constructor(
@@ -25,8 +27,12 @@ class ReportDetailViewModel @Inject constructor(
     var latitude by mutableStateOf<Double?>(null)
     var longitude by mutableStateOf<Double?>(null)
     var imageUris by mutableStateOf<List<Uri>>(emptyList())
+    var type by mutableStateOf("")
+    var score by mutableStateOf("")
+    var outcome by mutableStateOf("")
 
 
+    @OptIn(ExperimentalTime::class)
     fun saveReport() {
         // Basic validation
         if (reportTitle.isBlank()) {
@@ -34,18 +40,20 @@ class ReportDetailViewModel @Inject constructor(
             return
         }
 
-        val newReport = InspectionReport(
+        val newReport = Inspection(
+            createdAt = Clock.System.now(),
+            type = type,
             title = reportTitle,
             notes = reportNotes,
+            score = score,
+            outcome = outcome,
             status = reportStatus,
-            timestamp = System.currentTimeMillis(),
-            gpsLatitude = latitude,
-            gpsLongitude = longitude
-            // Note: Saving imageUris will require a TypeConverter in Room
+            lat = latitude,
+            long = longitude
         )
 
         viewModelScope.launch {
-            inspectionDao.insertOrUpdateReport(newReport)
+            inspectionDao.upsert(newReport)
         }
     }
 }

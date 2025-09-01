@@ -12,7 +12,20 @@
           "package_name": "com.tiramisu.groupapplication"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1075364923929-3gn197jf722k3eql88rhvq48b5m630ob.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tiramisu.groupapplication",
+            "certificate_hash": "4141b43c3f0d93b944d46ea34e9863876b1ff5b2"
+          }
+        },
+        {
+          "client_id": "1075364923929-c5s758733d7n9k9rmd53ua44j15jp857.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDdzYf_evXW2H6nPJO__U-2ejQ5QUFUXqE"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1075364923929-c5s758733d7n9k9rmd53ua44j15jp857.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
