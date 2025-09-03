@@ -70,6 +70,11 @@ android {
 
 kotlin {
     jvmToolchain(11)
+    compilerOptions {
+        freeCompilerArgs.addAll(
+            "-opt-in=kotlin.time.ExperimentalTime"
+        )
+    }
 }
 
 // The conflicting kotlin {} block has been removed.

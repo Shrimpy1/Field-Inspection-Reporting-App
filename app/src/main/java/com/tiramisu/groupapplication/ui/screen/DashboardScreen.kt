@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tiramisu.groupapplication.domain.model.Inspection
+import com.tiramisu.groupapplication.ui.viewmodel.DashboardViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,8 +33,7 @@ fun DashboardScreen(
     onAddReport: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
-    // Collect the list of reports from the ViewModel's Flow
-    val reports by viewModel.reports.collectAsState(initial = emptyList())
+    val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Inspection Reports") }) },
@@ -51,7 +51,7 @@ fun DashboardScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(reports) { report ->
+            items(uiState.items) { report ->
                 ReportListItem(report = report)
             }
         }

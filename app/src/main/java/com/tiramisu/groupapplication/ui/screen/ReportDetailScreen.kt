@@ -1,4 +1,4 @@
-package com.tiramisu.groupapplication.ui.reportdetail
+package com.tiramisu.groupapplication.ui.screen
 
 import android.Manifest
 import android.content.Context
@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.google.android.gms.location.LocationServices
+import com.tiramisu.groupapplication.ui.viewmodel.ReportDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

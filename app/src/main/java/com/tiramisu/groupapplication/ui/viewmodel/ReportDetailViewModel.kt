@@ -1,4 +1,4 @@
-package com.tiramisu.groupapplication.ui.reportdetail
+package com.tiramisu.groupapplication.ui.viewmodel
 
 import android.net.Uri
 import androidx.compose.runtime.getValue
