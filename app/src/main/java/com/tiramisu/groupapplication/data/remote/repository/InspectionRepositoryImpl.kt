@@ -6,6 +6,7 @@ import com.google.firebase.firestore.SetOptions
 import com.tiramisu.groupapplication.data.local.InspectionDao
 import com.tiramisu.groupapplication.data.remote.dto.InspectionDto
 import com.tiramisu.groupapplication.data.remote.dto.toInspection
+import com.tiramisu.groupapplication.di.InspectionCollection
 import com.tiramisu.groupapplication.di.IoDispatcher
 import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
@@ -20,7 +21,7 @@ import javax.inject.Inject
 
 class InspectionRepositoryImpl @Inject constructor(
     private val dao: InspectionDao,
-    private val inspectionCol: CollectionReference,
+    @InspectionCollection private val inspectionCol: CollectionReference,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : InspectionRepository {
     override fun getAllReports(): Flow<List<Inspection>> = dao.getAllReports()
