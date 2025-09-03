@@ -1,17 +1,26 @@
 package com.tiramisu.groupapplication.data.local
 
-import androidx.room.*
-import com.tiramisu.groupapplication.data.model.InspectionReport
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import com.tiramisu.groupapplication.domain.model.Inspection
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface InspectionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertOrUpdateReport(report: InspectionReport)
+    suspend fun upsert(report: Inspection)
 
-    @Query("SELECT * FROM inspection_reports ORDER BY timestamp DESC")
-    fun getAllReports(): Flow<List<InspectionReport>>
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(reports: List<Inspection>)
+
+    @Query("SELECT * FROM inspection_reports ORDER BY createdAt DESC")
+    fun getAllReports(): Flow<List<Inspection>>
 
     @Query("SELECT * FROM inspection_reports WHERE id = :reportId")
-    suspend fun getReportById(reportId: Long): InspectionReport?
+    suspend fun getReportById(reportId: Long): Inspection?
+
+    @Query("DELETE FROM inspection_reports WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<String>)
 }
