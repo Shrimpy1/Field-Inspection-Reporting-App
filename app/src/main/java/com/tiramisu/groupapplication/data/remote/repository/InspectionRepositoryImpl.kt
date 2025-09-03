@@ -2,7 +2,6 @@ package com.tiramisu.groupapplication.data.remote.repository
 
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentChange
-import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.SetOptions
 import com.tiramisu.groupapplication.data.local.InspectionDao
 import com.tiramisu.groupapplication.data.remote.dto.InspectionDto
@@ -11,8 +10,9 @@ import com.tiramisu.groupapplication.di.IoDispatcher
 import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -25,12 +25,12 @@ class InspectionRepositoryImpl @Inject constructor(
 ) : InspectionRepository {
     override fun getAllReports(): Flow<List<Inspection>> = dao.getAllReports()
 
-    override fun observeRealtime(): ListenerRegistration {
-        return inspectionCol.addSnapshotListener { snapshot, e ->
+    override fun observeRealtime(): Flow<Unit> = callbackFlow {
+        val reg = inspectionCol.addSnapshotListener { snapshot, e ->
             if (e != null || snapshot == null) {
                 return@addSnapshotListener
             }
-            GlobalScope.launch(ioDispatcher) {
+            launch(ioDispatcher) {
                 val upserts = snapshot.documents.mapNotNull { doc ->
                     doc.toObject(InspectionDto::class.java)?.toInspection(doc.id)
                 }
@@ -43,8 +43,11 @@ class InspectionRepositoryImpl @Inject constructor(
                 if (removed.isNotEmpty()) {
                     dao.deleteByIds(removed)
                 }
+
+                trySend(Unit).isSuccess
             }
         }
+        awaitClose { reg.remove() }
     }
 
     override suspend fun upsert(inspection: Inspection): String = withContext(ioDispatcher) {

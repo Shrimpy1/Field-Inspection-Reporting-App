@@ -1,6 +1,7 @@
 package com.tiramisu.groupapplication.di
 
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
 import dagger.Module
@@ -14,6 +15,10 @@ import javax.inject.Singleton
 object FirestoreModule {
     @Provides
     @Singleton
-    @FirestoreDB
     fun provideFirestore(): FirebaseFirestore = Firebase.firestore
+
+    @Provides
+    fun provideInspectionCollection(db: FirebaseFirestore): CollectionReference = db.collection(
+        "inspection"
+    )
 }
