@@ -35,6 +35,10 @@ class DashboardViewModel @Inject constructor(
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardState())
 
     init {
+        startRealtime()
+    }
+
+    private fun startRealtime() {
         repo.observeRealtime()
             .onStart {
                 syncing.value = true
@@ -52,18 +56,6 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun refresh() {
-        repo.observeRealtime()
-            .onStart {
-                syncing.value = true
-                lastError.value = null
-            }
-            .onEach {
-                syncing.value = false
-            }
-            .catch { e ->
-                syncing.value = false
-                lastError.value = e
-            }
-            .launchIn(viewModelScope)
+        syncing.value = true
     }
 }

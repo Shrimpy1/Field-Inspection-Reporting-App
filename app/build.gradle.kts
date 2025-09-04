@@ -72,7 +72,8 @@ kotlin {
     jvmToolchain(11)
     compilerOptions {
         freeCompilerArgs.addAll(
-            "-opt-in=kotlin.time.ExperimentalTime"
+            "-opt-in=kotlin.time.ExperimentalTime",
+            "-XXLanguage:+PropertyParamAnnotationDefaultTargetMode"
         )
     }
 }
