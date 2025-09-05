@@ -97,7 +97,7 @@ dependencies {
     // Room Database (Offline Storage)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.firebase.auth.ktx)
+    implementation(libs.google.firebase.auth)
     ksp(libs.androidx.room.compiler)
 
     // Hilt (Dependency Injection)
@@ -108,7 +108,6 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.firestore)
-    implementation(libs.firebase.auth)
 
     // Supabase
     implementation(platform(libs.supabase.bom))
