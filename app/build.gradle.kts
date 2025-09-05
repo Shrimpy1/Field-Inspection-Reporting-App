@@ -99,6 +99,8 @@ dependencies {
     // Room Database (Offline Storage)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.maps.compose)
+    implementation(libs.play.services.maps)
     ksp(libs.androidx.room.compiler)
 
     // Hilt (Dependency Injection)
