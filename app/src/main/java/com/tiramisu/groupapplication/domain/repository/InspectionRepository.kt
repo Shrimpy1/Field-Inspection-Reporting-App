@@ -9,4 +9,8 @@ interface InspectionRepository {
 
     suspend fun upsert(inspection: Inspection): String
     suspend fun delete(id: String): Void?
+
+    // New function for supervisor actions
+    suspend fun updateInspection(inspection: Inspection)
 }
+

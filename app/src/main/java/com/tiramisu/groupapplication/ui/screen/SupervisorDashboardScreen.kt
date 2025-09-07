@@ -1,13 +1,11 @@
 package com.tiramisu.groupapplication.ui.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,39 +24,40 @@ import com.tiramisu.groupapplication.ui.viewmodel.SupervisorViewModel
 
 @Composable
 fun SupervisorDashboardScreen(
-    viewModel: SupervisorViewModel = hiltViewModel()
+    viewModel: SupervisorViewModel = hiltViewModel(),
+    onReportClick: (inspectionId: String) -> Unit // Add this parameter
 ) {
-    val reports by viewModel.allReports.collectAsStateWithLifecycle()
+    val allReports by viewModel.allReports.collectAsStateWithLifecycle()
 
-    if (reports.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            Text("No inspection reports available for review.", style = MaterialTheme.typography.bodyLarge)
-        }
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(reports) { report ->
-                InspectionReviewCard(report = report)
-            }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(allReports) { report ->
+            SupervisorReportListItem(report = report, onClick = { onReportClick(report.id) })
         }
     }
 }
 
 @Composable
-private fun InspectionReviewCard(report: Inspection) {
+private fun SupervisorReportListItem(report: Inspection, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(report.title, style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(4.dp))
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(report.title, style = MaterialTheme.typography.titleMedium)
             Text("Status: ${report.status.name}", style = MaterialTheme.typography.bodyMedium)
-            Text("Outcome: ${report.outcome}", style = MaterialTheme.typography.bodyMedium)
-            // TODO: Add buttons for Approve/Reject and adding notes
+            report.reviewedBy?.let {
+                Text("Reviewed by: $it", style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
+

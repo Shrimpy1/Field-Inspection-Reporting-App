@@ -82,7 +82,15 @@ class InspectionRepositoryImpl @Inject constructor(
         doc.id
     }
 
+    override suspend fun updateInspection(inspection: Inspection) {
+        withContext(ioDispatcher) {
+            val dto = inspection.toInspectionDto()
+            inspectionCol.document(inspection.id).set(dto, SetOptions.merge()).await()
+        }
+    }
+
     override suspend fun delete(id: String): Void? = withContext(ioDispatcher) {
         inspectionCol.document(id).delete().await()
     }
 }
+
