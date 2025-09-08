@@ -21,17 +21,28 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.tiramisu.groupapplication.ui.dashboard.DashboardScreen
-import com.tiramisu.groupapplication.ui.screens.inspection.InspectionForm
 
 sealed class Routes(val route: String) {
     object Home : Routes("home")
     object Auth : Routes("auth")
-    object Dashboard : Routes("dashboard")
-    object Create : Routes("create")
+    object InspectionDetails : Routes("inspection/{inspectionId}") {
+        fun createRoute(inspectionId: String) = "inspection/$inspectionId"
+    }
+
+    object InspectionForm : Routes("inspection/new")
+    object InspectionMap : Routes("inspection/{inspectionId}/map") {
+        fun createRoute(inspectionId: String) = "inspection/$inspectionId/map"
+    }
+
+    object InspectionEdit : Routes("inspection/{inspectionId}/edit") {
+        fun createRoute(inspectionId: String) = "inspection/$inspectionId/edit"
+    }
 }
 
 enum class NavBarDestinations(
@@ -91,7 +102,7 @@ fun AppNavHost() {
         ) {
             composable(route = Routes.Home.route) {
                 fab = {
-                    FloatingActionButton(onClick = { navController.navigate(Routes.Create.route) }) {
+                    FloatingActionButton(onClick = { navController.navigate(Routes.InspectionForm.route) }) {
                         Icon(Icons.Default.Add, contentDescription = "Add New Report")
                     }
                 }
@@ -99,8 +110,43 @@ fun AppNavHost() {
                 DashboardScreen(onAddReport = { navController.navigate("") })
             }
 
-            composable(route = Routes.Create.route) {
-                InspectionForm()
+            composable(route = Routes.InspectionDetails.route) {
+
+            }
+
+            // Create (New)
+            composable(Routes.InspectionForm.route) {
+                InspectionCreateScreen(
+                    onSaved = { newId ->
+                        // After creating, navigate to details (or wherever you prefer)
+                        navController.navigate("inspection/$newId") {
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateUp = { navController.navigateUp() }
+                )
+            }
+
+            // Edit (Existing)
+            composable(
+                route = Routes.InspectionEdit.route,
+                arguments = listOf(
+                    navArgument("inspectionId") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val inspectionId =
+                    backStackEntry.arguments?.getString("inspectionId") ?: return@composable
+
+                InspectionEditScreen(
+                    inspectionId = inspectionId,
+                    onSaved = { _ ->
+                        navController.navigate(Routes.InspectionDetails.createRoute(inspectionId))
+                    },
+                    onNavigateUp = { navController.navigateUp() },
+                    onMapNavigate = {
+                        navController.navigate("inspection/$inspectionId/map")
+                    }
+                )
             }
         }
     }
