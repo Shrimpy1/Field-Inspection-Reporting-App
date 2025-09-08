@@ -13,3 +13,6 @@ annotation class SupabaseClientQ
 
 @Qualifier
 annotation class IoDispatcher
+
+@Qualifier
+annotation class ApplicationScope

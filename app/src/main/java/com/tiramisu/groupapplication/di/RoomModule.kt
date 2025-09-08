@@ -2,6 +2,7 @@ package com.tiramisu.groupapplication.di
 
 import android.content.Context
 import androidx.room.Room
+import com.tiramisu.groupapplication.BuildConfig
 import com.tiramisu.groupapplication.data.local.AppDatabase
 import com.tiramisu.groupapplication.data.local.InspectionDao
 import dagger.Module
@@ -17,11 +18,17 @@ object RoomModule {
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
-        return Room.databaseBuilder(
+        val builder = Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             "inspection_database"
-        ).build()
+        )
+
+        if (BuildConfig.DEBUG) {
+            builder.fallbackToDestructiveMigration(true)
+        }
+
+        return builder.build()
     }
 
     @Provides

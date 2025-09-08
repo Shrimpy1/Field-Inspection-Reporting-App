@@ -6,7 +6,7 @@ import androidx.room.TypeConverters
 import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.util.Converters
 
-@Database(entities = [Inspection::class], version = 1, exportSchema = false)
+@Database(entities = [Inspection::class], version = 2, exportSchema = true)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun inspectionDao(): InspectionDao

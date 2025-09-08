@@ -20,8 +20,5 @@ data class Inspection @OptIn(ExperimentalTime::class) constructor(
     val status: InspectionStatus,
     val lat: Double?,
     val long: Double?,
-    val isSynced: Boolean = false,
-    val reviewedBy: String? = null,
-    val reviewedAt: Instant? = null,
-    val reviewNotes: String? = null
+    val isSynced: Boolean = false
 )

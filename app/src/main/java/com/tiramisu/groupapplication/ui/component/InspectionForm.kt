@@ -1,6 +1,8 @@
-package com.tiramisu.groupapplication.ui.screens.inspection
+package com.tiramisu.groupapplication.ui.component
 
+import android.Manifest
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,8 +11,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -18,7 +23,11 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,27 +39,40 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.android.gms.location.LocationServices
 import com.tiramisu.groupapplication.domain.enums.InspectionStatus
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionFormViewModel
+import com.tiramisu.groupapplication.util.map.awaitBestLocation
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun InspectionForm(
     modifier: Modifier = Modifier,
     viewModel: InspectionFormViewModel = hiltViewModel(),
-    onSaved: (String) -> Unit = {}
+    onSaved: (String) -> Unit = {},
+    onMapNavigate: () -> Unit = {},
 ) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val formData by viewModel.formData.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     var showDateTimeDialog by remember { mutableStateOf(false) }
     val dateTimeFormatter = remember {
@@ -58,46 +80,88 @@ fun InspectionForm(
     }
     val zone = remember { ZoneId.systemDefault() }
 
-    val createdText = remember(state.createdAtMillis) {
-        val instant = Instant.ofEpochMilli(state.createdAtMillis)
+    val createdText = remember(formData.createdAtMillis) {
+        val instant = Instant.ofEpochMilli(formData.createdAtMillis)
         dateTimeFormatter.format(instant.atZone(zone).toLocalDateTime())
     }
 
-    LaunchedEffect(state.savedId) {
-        val id = state.savedId ?: return@LaunchedEffect
-        onSaved(id)
-        viewModel.clearSavedFlag()
+    val fusedLocationClient = remember {
+        LocationServices.getFusedLocationProviderClient(context)
     }
+    val permissionsState = rememberMultiplePermissionsState(
+        listOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+    )
+    var locating by remember { mutableStateOf(false) }
+
+    fun getCurrentLocation() {
+        if (!permissionsState.allPermissionsGranted) {
+            permissionsState.launchMultiplePermissionRequest()
+            return
+        }
+
+        if (locating) {
+            return
+        }
+
+        scope.launch {
+            locating = true
+            try {
+                val loc = fusedLocationClient.awaitBestLocation()
+                if (loc != null) {
+                    viewModel.setLocation(loc.latitude, loc.longitude)
+                } else {
+                    viewModel.setGeneralError("Couldn't get your location. Try again.")
+                }
+                locating = false
+            } catch (e: SecurityException) {
+                viewModel.setGeneralError("Location permission missing.")
+            } finally {
+                locating = false
+            }
+        }
+
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { evt ->
+            when (evt) {
+                is InspectionFormViewModel.UiEvent.Saved -> onSaved(evt.id)
+                is InspectionFormViewModel.UiEvent.Error -> { /* optional toast/snackbar */
+                }
+            }
+        }
+    }
+
+    //TODO: make ui for different states
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.Top
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         OutlinedTextField(
-            value = state.type,
+            value = formData.type,
             onValueChange = viewModel::setType,
             label = { Text("Type") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
 
-        Spacer(Modifier.height(12.dp))
-
         OutlinedTextField(
-            value = state.title,
+            value = formData.title,
             onValueChange = viewModel::setTitle,
             label = { Text("Title") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
 
-        Spacer(Modifier.height(12.dp))
-
         OutlinedTextField(
-            value = state.notes,
+            value = formData.notes,
             onValueChange = viewModel::setNotes,
             label = { Text("Notes") },
             modifier = Modifier.fillMaxWidth(),
@@ -105,10 +169,8 @@ fun InspectionForm(
             minLines = 3
         )
 
-        Spacer(Modifier.height(12.dp))
-
         OutlinedTextField(
-            value = state.score,
+            value = formData.score,
             onValueChange = viewModel::setScore,
             label = { Text("Score") },
             modifier = Modifier.fillMaxWidth(),
@@ -116,10 +178,8 @@ fun InspectionForm(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
 
-        Spacer(Modifier.height(12.dp))
-
         OutlinedTextField(
-            value = state.outcome,
+            value = formData.outcome,
             onValueChange = viewModel::setOutcome,
             label = { Text("Outcome") },
             modifier = Modifier.fillMaxWidth(),
@@ -129,12 +189,10 @@ fun InspectionForm(
         Spacer(Modifier.height(12.dp))
 
         StatusDropdown(
-            selected = state.status,
+            selected = formData.status,
             onSelected = viewModel::setStatus,
             modifier = Modifier.fillMaxWidth()
         )
-
-        Spacer(Modifier.height(12.dp))
 
         OutlinedTextField(
             value = createdText,
@@ -149,10 +207,35 @@ fun InspectionForm(
             }
         )
 
-        Spacer(Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            FilledTonalButton(
+                onClick = { getCurrentLocation() },
+                enabled = !locating && !formData.saving,
+            ) {
+                Text("Get Current Location")
+            }
 
-        if (state.generalError != null) {
-            Text(text = state.generalError ?: "", color = androidx.compose.ui.graphics.Color.Red)
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+            ) {
+                FilledTonalIconButton(
+                    onClick = onMapNavigate,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                ) {
+                    Icon(
+                        Icons.Outlined.LocationOn,
+                        contentDescription = "Pick on map"
+                    )
+                }
+            }
+        }
+
+        if (formData.generalError != null) {
+            Text(text = formData.generalError ?: "", color = Color.Red)
             Spacer(Modifier.height(8.dp))
         }
 
@@ -162,16 +245,24 @@ fun InspectionForm(
         ) {
             Button(
                 onClick = { viewModel.save() },
-                enabled = !state.saving
+                enabled = !formData.saving
             ) {
-                Text(if (state.saving) "Saving..." else "Save")
+                Text(if (formData.saving) "Saving..." else "Save")
             }
+        }
+    }
+
+    if (!permissionsState.allPermissionsGranted) {
+        Button(
+            onClick = { permissionsState.launchMultiplePermissionRequest() }
+        ) {
+            Text("Request Location Permissions")
         }
     }
 
     if (showDateTimeDialog) {
         DateTimePickerDialog(
-            initialEpochMillis = state.createdAtMillis,
+            initialEpochMillis = formData.createdAtMillis,
             onConfirm = {
                 viewModel.setDateTime(it)
                 showDateTimeDialog = false
@@ -189,7 +280,7 @@ private fun StatusDropdown(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val all = remember { InspectionStatus.values().toList() }
+    val all = remember { InspectionStatus.entries }
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -203,7 +294,7 @@ private fun StatusDropdown(
             label = { Text("Status") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier = Modifier
-                .menuAnchor()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 .fillMaxWidth()
         )
 

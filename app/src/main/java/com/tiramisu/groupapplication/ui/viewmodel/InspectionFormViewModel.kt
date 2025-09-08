@@ -6,15 +6,26 @@ import com.tiramisu.groupapplication.domain.enums.InspectionStatus
 import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
-data class InspectionFormState(
+sealed class InspectionFormState {
+    object Loading : InspectionFormState()
+    object Idle : InspectionFormState()
+    object Success : InspectionFormState()
+    data class Error(val message: String) : InspectionFormState()
+}
+
+data class InspectionFormInfo(
     val createdAtMillis: Long = System.currentTimeMillis(),
     val type: String = "",
     val title: String = "",
@@ -25,7 +36,9 @@ data class InspectionFormState(
     val saving: Boolean = false,
     val errors: InspectionFormError = InspectionFormError(),
     val generalError: String? = null, // non-field error (e.g., repo failure)
-    val savedId: String? = null
+    val editingId: String? = null,
+    val lat: Double? = null,
+    val lng: Double? = null,
 )
 
 data class InspectionFormError(
@@ -43,131 +56,176 @@ data class InspectionFormError(
 class InspectionFormViewModel @Inject constructor(
     private val repo: InspectionRepository
 ) : ViewModel() {
-    private val _state = MutableStateFlow(InspectionFormState())
-    val state: StateFlow<InspectionFormState> = _state.asStateFlow()
+    private val _uiState = MutableStateFlow<InspectionFormState>(InspectionFormState.Idle)
+    val uiState: StateFlow<InspectionFormState> = _uiState.asStateFlow()
+    val formData = MutableStateFlow(InspectionFormInfo())
+
+    sealed interface UiEvent {
+        data class Saved(val id: String) : UiEvent
+        data class Error(val message: String) : UiEvent
+    }
+
+    private val _events = MutableSharedFlow<UiEvent>(replay = 0, extraBufferCapacity = 1)
+    val events: SharedFlow<UiEvent> = _events.asSharedFlow()
+
+    fun loadForEdit(inspectionId: String) = viewModelScope.launch {
+        _uiState.value = InspectionFormState.Loading
+        val inspection = repo.getReportById(inspectionId).firstOrNull()
+        if (inspection == null) {
+            _uiState.value = InspectionFormState.Error("Failed to get Inspection")
+        } else {
+            initForEdit(inspection)
+            _uiState.value = InspectionFormState.Idle
+        }
+    }
+
+    fun initForEdit(inspection: Inspection) {
+        val cur = formData.value
+        formData.value = cur.copy(
+            createdAtMillis = inspection.createdAt.toEpochMilliseconds(),
+            type = inspection.type,
+            title = inspection.title,
+            notes = inspection.notes,
+            score = inspection.score,
+            outcome = inspection.outcome,
+            status = inspection.status,
+            lat = inspection.lat,
+            lng = inspection.lng,
+            editingId = inspection.id,
+            generalError = null
+        )
+    }
 
     fun setDateTime(epochMillis: Long) {
-        val cur = _state.value
-        _state.value = cur.copy(
+        val cur = formData.value
+        formData.value = cur.copy(
             createdAtMillis = epochMillis,
-            savedId = null,
             generalError = null
         )
     }
 
     fun setType(type: String) {
-        val cur = _state.value
-        _state.value = cur.copy(
+        val cur = formData.value
+        formData.value = cur.copy(
             type = type,
             errors = cur.errors.copy(type = validateType(type)),
-            savedId = null,
             generalError = null
         )
     }
 
     fun setTitle(title: String) {
-        val cur = _state.value
-        _state.value = cur.copy(
+        val cur = formData.value
+        formData.value = cur.copy(
             title = title,
             errors = cur.errors.copy(title = validateTitle(title)),
-            savedId = null,
             generalError = null
         )
     }
 
     fun setNotes(notes: String) {
-        val cur = _state.value
-        _state.value = cur.copy(
+        val cur = formData.value
+        formData.value = cur.copy(
             notes = notes,
             errors = cur.errors.copy(notes = validateNotes(notes)),
-            savedId = null,
             generalError = null
         )
     }
 
     fun setScore(score: String) {
-        val cur = _state.value
-        _state.value = cur.copy(
+        val cur = formData.value
+        formData.value = cur.copy(
             score = score,
             errors = cur.errors.copy(score = validateScore(score)),
-            savedId = null,
             generalError = null
         )
     }
 
     fun setOutcome(outcome: String) {
-        val cur = _state.value
-        _state.value = cur.copy(
+        val cur = formData.value
+        formData.value = cur.copy(
             outcome = outcome,
             errors = cur.errors.copy(outcome = validateOutcome(outcome)),
-            savedId = null,
             generalError = null
         )
     }
 
     fun setStatus(status: InspectionStatus) {
-        val cur = _state.value
-        _state.value = cur.copy(
+        val cur = formData.value
+        formData.value = cur.copy(
             status = status,
-            savedId = null,
             generalError = null
         )
     }
 
+    fun setLocation(lat: Double, lng: Double) {
+        val cur = formData.value
+        formData.value = cur.copy(
+            lat = lat,
+            lng = lng,
+            generalError = null
+        )
+    }
+
+    fun setGeneralError(error: String?) {
+        val cur = formData.value
+        formData.value = cur.copy(generalError = error)
+    }
+
     @OptIn(ExperimentalTime::class)
     fun save() {
-        val s = _state.value
+        val data = formData.value
 
         // Validate all fields at once
         val e = InspectionFormError(
-            type = validateType(s.type),
-            title = validateTitle(s.title),
-            notes = validateNotes(s.notes),
-            score = validateScore(s.score),
-            outcome = validateOutcome(s.outcome)
+            type = validateType(data.type),
+            title = validateTitle(data.title),
+            notes = validateNotes(data.notes),
+            score = validateScore(data.score),
+            outcome = validateOutcome(data.outcome)
         )
 
         if (e.hasAny) {
-            _state.value = s.copy(errors = e, generalError = null)
+            formData.value = data.copy(errors = e, generalError = null)
             return
         }
 
         viewModelScope.launch {
+            _uiState.value = InspectionFormState.Loading
+
             try {
-                _state.value = _state.value.copy(
+                formData.value = formData.value.copy(
                     saving = true,
                     errors = InspectionFormError(),
-                    generalError = null,
-                    savedId = null
+                    generalError = null
                 )
 
                 val inspection = Inspection(
-                    id = "",
-                    createdAt = Instant.fromEpochMilliseconds(s.createdAtMillis),
-                    type = s.type.trim(),
-                    title = s.title.trim(),
-                    notes = s.notes.trim(),
-                    score = s.score.trim(),
-                    outcome = s.outcome.trim(),
-                    status = s.status,
-                    lat = null, // TODO implement map
-                    long = null, // TODO implement map
+                    id = data.editingId ?: "",
+                    createdAt = Instant.fromEpochMilliseconds(data.createdAtMillis),
+                    type = data.type.trim(),
+                    title = data.title.trim(),
+                    notes = data.notes.trim(),
+                    score = data.score.trim(),
+                    outcome = data.outcome.trim(),
+                    status = data.status,
+                    lat = data.lat,
+                    lng = data.lng,
                     isSynced = false
                 )
 
                 val id = repo.upsert(inspection)
-                _state.value = _state.value.copy(saving = false, savedId = id)
+                formData.value = formData.value.copy(saving = false, editingId = id)
+                _uiState.value = InspectionFormState.Success
+                _events.emit(UiEvent.Saved(id))
             } catch (t: Throwable) {
-                _state.value = _state.value.copy(
+                formData.value = formData.value.copy(
                     saving = false,
                     generalError = t.message ?: "Failed to save"
                 )
+            } finally {
+                _uiState.value = InspectionFormState.Idle
             }
         }
-    }
-
-    fun clearSavedFlag() {
-        _state.value = _state.value.copy(savedId = null)
     }
 
     // Validation helpers

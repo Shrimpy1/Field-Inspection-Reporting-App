@@ -78,6 +78,8 @@ kotlin {
     }
 }
 
+// The conflicting kotlin {} block has been removed.
+
 dependencies {
     // Core & UI (Your existing dependencies)
     implementation(libs.androidx.core.ktx)
@@ -97,7 +99,6 @@ dependencies {
     // Room Database (Offline Storage)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.google.firebase.auth)
     ksp(libs.androidx.room.compiler)
 
     // Hilt (Dependency Injection)

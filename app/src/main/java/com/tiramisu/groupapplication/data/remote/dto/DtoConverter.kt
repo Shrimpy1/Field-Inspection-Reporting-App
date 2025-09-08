@@ -24,7 +24,7 @@ fun InspectionDto.toInspection(id: String): Inspection = Inspection(
     outcome = this.outcome,
     status = this.status.toInspectionStatus(),
     lat = this.latitude,
-    long = this.longitude,
+    lng = this.longitude,
     isSynced = true
 )
 
@@ -38,5 +38,5 @@ fun Inspection.toInspectionDto(): InspectionDto = InspectionDto(
     outcome = this.outcome,
     status = this.status.toRaw(),
     latitude = this.lat,
-    longitude = this.long
+    longitude = this.lng
 )
