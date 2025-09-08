@@ -20,17 +20,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionLocationViewModel
 import com.tiramisu.groupapplication.ui.viewmodel.ReportLocState
 import com.tiramisu.groupapplication.util.map.moveCameraTo
 
 @Composable
-fun EventLocationScreen(
+fun InspectionLocationScreen(
     viewModel: InspectionLocationViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -81,7 +83,9 @@ fun LocationMap(
     }
 
     val latLng = LatLng(lat, lng)
-    val cameraPositionState = rememberCameraPositionState()
+    val cameraPositionState = rememberCameraPositionState {
+        CameraPosition.fromLatLngZoom(latLng, 16f)
+    }
 
     LaunchedEffect(permissions.allPermissionsGranted) {
         if (permissions.allPermissionsGranted) {
@@ -97,6 +101,8 @@ fun LocationMap(
         ),
     ) {
         Marker(
+            state = MarkerState(position = latLng),
+            title = "Inspection location",
             snippet = "$lat, $lng"
         )
     }

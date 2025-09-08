@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,13 +22,14 @@ sealed class ReportLocState {
     data class Error(val message: String) : ReportLocState()
 }
 
+@HiltViewModel
 class InspectionLocationViewModel @Inject constructor(
     private val inspectionRepo: InspectionRepository,
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<ReportLocState> =
-        savedStateHandle.getStateFlow<String?>("eventId", null).flatMapLatest { reportId ->
+        savedStateHandle.getStateFlow<String?>("inspectionId", null).flatMapLatest { reportId ->
             if (reportId.isNullOrBlank()) {
                 flowOf(ReportLocState.Error("Missing report id"))
             } else {
