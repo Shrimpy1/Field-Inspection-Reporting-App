@@ -101,6 +101,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
+    implementation(libs.accompanist.permissions)
     ksp(libs.androidx.room.compiler)
 
     // Hilt (Dependency Injection)
