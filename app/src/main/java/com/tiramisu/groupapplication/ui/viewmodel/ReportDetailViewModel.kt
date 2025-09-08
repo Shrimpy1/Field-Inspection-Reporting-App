@@ -49,7 +49,7 @@ class ReportDetailViewModel @Inject constructor(
             outcome = outcome,
             status = reportStatus,
             lat = latitude,
-            long = longitude
+            lng = longitude
         )
 
         viewModelScope.launch {
