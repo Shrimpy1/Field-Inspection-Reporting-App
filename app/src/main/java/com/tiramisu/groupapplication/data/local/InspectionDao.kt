@@ -19,8 +19,11 @@ interface InspectionDao {
     fun getAllReports(): Flow<List<Inspection>>
 
     @Query("SELECT * FROM inspection_reports WHERE id = :reportId LIMIT 1")
-    suspend fun getReportById(reportId: String): Flow<Inspection?>
+    fun getReportById(reportId: String): Flow<Inspection?>
 
     @Query("DELETE FROM inspection_reports WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<String>)
+
+    @Query("SELECT id FROM inspection_reports")
+    suspend fun getAllIds(): List<String>
 }
