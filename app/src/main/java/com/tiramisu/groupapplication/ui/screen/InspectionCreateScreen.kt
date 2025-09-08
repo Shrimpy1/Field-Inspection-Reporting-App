@@ -17,7 +17,7 @@ import com.tiramisu.groupapplication.ui.component.InspectionForm
 @Composable
 fun InspectionCreateScreen(
     onSaved: (String) -> Unit,
-    onNavigateUp: () -> Unit,
+    onBack: () -> Unit,
     onMapNavigate: () -> Unit = {}
 ) {
     Scaffold(
@@ -25,7 +25,7 @@ fun InspectionCreateScreen(
             TopAppBar(
                 title = { Text("Create Inspection") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateUp) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }

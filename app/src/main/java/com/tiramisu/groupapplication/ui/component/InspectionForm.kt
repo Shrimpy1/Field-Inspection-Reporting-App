@@ -125,10 +125,14 @@ fun InspectionForm(
 
     }
 
-    LaunchedEffect(formData.savedId) {
-        val id = formData.savedId ?: return@LaunchedEffect
-        onSaved(id)
-        viewModel.clearSavedFlag()
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { evt ->
+            when (evt) {
+                is InspectionFormViewModel.UiEvent.Saved -> onSaved(evt.id)
+                is InspectionFormViewModel.UiEvent.Error -> { /* optional toast/snackbar */
+                }
+            }
+        }
     }
 
     //TODO: make ui for different states

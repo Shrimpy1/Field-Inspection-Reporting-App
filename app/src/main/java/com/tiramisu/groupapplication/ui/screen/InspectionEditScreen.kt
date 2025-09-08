@@ -21,7 +21,7 @@ import com.tiramisu.groupapplication.ui.viewmodel.InspectionFormViewModel
 fun InspectionEditScreen(
     inspectionId: String,
     onSaved: (String) -> Unit,
-    onNavigateUp: () -> Unit,
+    onBack: () -> Unit,
     onMapNavigate: () -> Unit
 ) {
     val viewModel: InspectionFormViewModel = hiltViewModel()
@@ -35,7 +35,7 @@ fun InspectionEditScreen(
             TopAppBar(
                 title = { Text("Edit Inspection") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateUp) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }

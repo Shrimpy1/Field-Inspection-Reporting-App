@@ -6,9 +6,13 @@ import com.tiramisu.groupapplication.domain.enums.InspectionStatus
 import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.time.ExperimentalTime
@@ -32,7 +36,7 @@ data class InspectionFormInfo(
     val saving: Boolean = false,
     val errors: InspectionFormError = InspectionFormError(),
     val generalError: String? = null, // non-field error (e.g., repo failure)
-    val savedId: String? = null,
+    val editingId: String? = null,
     val lat: Double? = null,
     val lng: Double? = null,
 )
@@ -56,13 +60,20 @@ class InspectionFormViewModel @Inject constructor(
     val uiState: StateFlow<InspectionFormState> = _uiState.asStateFlow()
     val formData = MutableStateFlow(InspectionFormInfo())
 
-    suspend fun loadForEdit(inspectionId: String) {
+    sealed interface UiEvent {
+        data class Saved(val id: String) : UiEvent
+        data class Error(val message: String) : UiEvent
+    }
+
+    private val _events = MutableSharedFlow<UiEvent>(replay = 0, extraBufferCapacity = 1)
+    val events: SharedFlow<UiEvent> = _events.asSharedFlow()
+
+    fun loadForEdit(inspectionId: String) = viewModelScope.launch {
         _uiState.value = InspectionFormState.Loading
-        repo.getReportById(inspectionId).collect { inspection ->
-            if (inspection == null) {
-                _uiState.value = InspectionFormState.Error("Failed to get Inspection")
-                return@collect
-            }
+        val inspection = repo.getReportById(inspectionId).firstOrNull()
+        if (inspection == null) {
+            _uiState.value = InspectionFormState.Error("Failed to get Inspection")
+        } else {
             initForEdit(inspection)
             _uiState.value = InspectionFormState.Idle
         }
@@ -80,7 +91,8 @@ class InspectionFormViewModel @Inject constructor(
             status = inspection.status,
             lat = inspection.lat,
             lng = inspection.lng,
-            savedId = inspection.id,
+            editingId = inspection.id,
+            generalError = null
         )
     }
 
@@ -88,7 +100,6 @@ class InspectionFormViewModel @Inject constructor(
         val cur = formData.value
         formData.value = cur.copy(
             createdAtMillis = epochMillis,
-            savedId = null,
             generalError = null
         )
     }
@@ -98,7 +109,6 @@ class InspectionFormViewModel @Inject constructor(
         formData.value = cur.copy(
             type = type,
             errors = cur.errors.copy(type = validateType(type)),
-            savedId = null,
             generalError = null
         )
     }
@@ -108,7 +118,6 @@ class InspectionFormViewModel @Inject constructor(
         formData.value = cur.copy(
             title = title,
             errors = cur.errors.copy(title = validateTitle(title)),
-            savedId = null,
             generalError = null
         )
     }
@@ -118,7 +127,6 @@ class InspectionFormViewModel @Inject constructor(
         formData.value = cur.copy(
             notes = notes,
             errors = cur.errors.copy(notes = validateNotes(notes)),
-            savedId = null,
             generalError = null
         )
     }
@@ -128,7 +136,6 @@ class InspectionFormViewModel @Inject constructor(
         formData.value = cur.copy(
             score = score,
             errors = cur.errors.copy(score = validateScore(score)),
-            savedId = null,
             generalError = null
         )
     }
@@ -138,7 +145,6 @@ class InspectionFormViewModel @Inject constructor(
         formData.value = cur.copy(
             outcome = outcome,
             errors = cur.errors.copy(outcome = validateOutcome(outcome)),
-            savedId = null,
             generalError = null
         )
     }
@@ -147,7 +153,6 @@ class InspectionFormViewModel @Inject constructor(
         val cur = formData.value
         formData.value = cur.copy(
             status = status,
-            savedId = null,
             generalError = null
         )
     }
@@ -157,7 +162,6 @@ class InspectionFormViewModel @Inject constructor(
         formData.value = cur.copy(
             lat = lat,
             lng = lng,
-            savedId = null,
             generalError = null
         )
     }
@@ -192,12 +196,11 @@ class InspectionFormViewModel @Inject constructor(
                 formData.value = formData.value.copy(
                     saving = true,
                     errors = InspectionFormError(),
-                    generalError = null,
-                    savedId = null
+                    generalError = null
                 )
 
                 val inspection = Inspection(
-                    id = "",
+                    id = data.editingId ?: "",
                     createdAt = Instant.fromEpochMilliseconds(data.createdAtMillis),
                     type = data.type.trim(),
                     title = data.title.trim(),
@@ -211,19 +214,18 @@ class InspectionFormViewModel @Inject constructor(
                 )
 
                 val id = repo.upsert(inspection)
-                formData.value = formData.value.copy(saving = false, savedId = id)
+                formData.value = formData.value.copy(saving = false, editingId = id)
                 _uiState.value = InspectionFormState.Success
+                _events.emit(UiEvent.Saved(id))
             } catch (t: Throwable) {
                 formData.value = formData.value.copy(
                     saving = false,
                     generalError = t.message ?: "Failed to save"
                 )
+            } finally {
+                _uiState.value = InspectionFormState.Idle
             }
         }
-    }
-
-    fun clearSavedFlag() {
-        formData.value = formData.value.copy(savedId = null)
     }
 
     // Validation helpers
