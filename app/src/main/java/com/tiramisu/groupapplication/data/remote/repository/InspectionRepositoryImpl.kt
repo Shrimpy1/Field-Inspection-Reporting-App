@@ -19,6 +19,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -70,6 +71,10 @@ class InspectionRepositoryImpl @Inject constructor(
             reg.remove()
             job.cancel()
         }
+    }
+
+    override fun getReportById(reportId: String): Flow<Inspection?> = runBlocking(ioDispatcher) {
+        dao.getReportById(reportId)
     }
 
     override suspend fun upsert(inspection: Inspection): String = withContext(ioDispatcher) {
