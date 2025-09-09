@@ -28,10 +28,13 @@ class DashboardViewModel @Inject constructor(
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardState())
 
     init {
-        repo.startRealtime()
+        // Use the corrected function name
+        repo.startRealtimeSync()
     }
 
     fun refresh() = viewModelScope.launch {
-        runCatching { repo.syncOnce(false) }
+        // Use the corrected function signature
+        repo.syncOnce()
     }
 }
+

@@ -1,9 +1,8 @@
 package com.tiramisu.groupapplication.data.remote.repository
 
-import android.util.Log
 import com.google.firebase.firestore.CollectionReference
-import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.toObjects
 import com.tiramisu.groupapplication.data.local.InspectionDao
 import com.tiramisu.groupapplication.data.remote.dto.InspectionDto
 import com.tiramisu.groupapplication.data.remote.dto.toInspection
@@ -11,78 +10,77 @@ import com.tiramisu.groupapplication.data.remote.dto.toInspectionDto
 import com.tiramisu.groupapplication.di.InspectionCollection
 import com.tiramisu.groupapplication.di.IoDispatcher
 import com.tiramisu.groupapplication.domain.model.Inspection
+import com.tiramisu.groupapplication.domain.model.SyncState
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class InspectionRepositoryImpl @Inject constructor(
     private val dao: InspectionDao,
     @InspectionCollection private val inspectionCol: CollectionReference,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : InspectionRepository {
+
+    private val scope = CoroutineScope(ioDispatcher + SupervisorJob())
+
+    private val _syncState = MutableStateFlow(SyncState())
+    override val syncState: Flow<SyncState> = _syncState.asStateFlow()
+
     override fun getAllReports(): Flow<List<Inspection>> = dao.getAllReports()
 
-    override fun observeRealtime(): Flow<Unit> = callbackFlow {
-        val job = SupervisorJob()
-        val scope = CoroutineScope(ioDispatcher + job)
+    override fun getReportById(id: String): Flow<Inspection?> = dao.getReportById(id)
 
-        val reg = inspectionCol.addSnapshotListener { snapshot, e ->
-            Log.i("FirestoreData", "snapshot: ${snapshot?.documentChanges}")
+    override fun startRealtimeSync() {
+        inspectionCol.addSnapshotListener { snapshot, e ->
             if (e != null) {
-                close(e)
+                _syncState.value = _syncState.value.copy(error = e)
                 return@addSnapshotListener
             }
             if (snapshot == null) return@addSnapshotListener
-
             scope.launch {
-                val upserts =
-                    snapshot.documentChanges.filter { it.type != DocumentChange.Type.REMOVED }
-                        .mapNotNull { doc ->
-                            doc.document.toObject(InspectionDto::class.java)
-                                .toInspection(doc.document.id)
-                        }
-                Log.i("FirestoreData", "upserts: $upserts")
-                if (upserts.isNotEmpty()) {
-                    dao.upsertAll(upserts)
-                }
-
-                val removed = snapshot.documentChanges
-                    .filter { it.type == DocumentChange.Type.REMOVED }
-                    .map { it.document.id }
-                Log.i("FirestoreData", "removed: $removed")
-
-                if (removed.isNotEmpty()) {
-                    dao.deleteByIds(removed)
-                }
-
-                trySend(Unit).isSuccess
+                syncOnce()
             }
         }
-        awaitClose {
-            reg.remove()
-            job.cancel()
+    }
+
+    override suspend fun syncOnce() = withContext(ioDispatcher) {
+        _syncState.value = SyncState(syncing = true, error = null)
+        try {
+            val snapshot = inspectionCol.get().await()
+            val inspections = snapshot.toObjects<InspectionDto>().mapIndexed { index, dto ->
+                dto.toInspection(snapshot.documents[index].id)
+            }
+            dao.upsertAll(inspections)
+            _syncState.value = SyncState(syncing = false, error = null)
+        } catch (e: Exception) {
+            _syncState.value = SyncState(syncing = false, error = e)
         }
     }
 
     override suspend fun upsert(inspection: Inspection): String = withContext(ioDispatcher) {
-        val doc = if (inspection.id.isBlank()) inspectionCol.document() else inspectionCol.document(
-            inspection.id
-        )
-
-        val dto = inspection.toInspectionDto()
-        doc.set(dto, SetOptions.merge()).await()
+        val doc = if (inspection.id.isBlank()) inspectionCol.document() else inspectionCol.document(inspection.id)
+        doc.set(inspection.toInspectionDto(), SetOptions.merge()).await()
         doc.id
     }
 
-    override suspend fun delete(id: String): Void? = withContext(ioDispatcher) {
+    override suspend fun delete(id: String) = withContext(ioDispatcher) {
         inspectionCol.document(id).delete().await()
     }
+
+    override suspend fun updateInspection(inspection: Inspection) {
+        withContext(ioDispatcher) {
+            inspectionCol.document(inspection.id).set(inspection.toInspectionDto(), SetOptions.merge()).await()
+        }
+    }
 }
+
