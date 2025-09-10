@@ -1,4 +1,4 @@
-package com.tiramisu.groupapplication.ui.dashboard
+package com.tiramisu.groupapplication.ui.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -14,32 +14,29 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tiramisu.groupapplication.domain.enums.InspectionStatus
 import com.tiramisu.groupapplication.domain.model.Inspection
-import com.tiramisu.groupapplication.ui.component.FabConfig
 import com.tiramisu.groupapplication.ui.viewmodel.DashboardViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,24 +44,8 @@ import com.tiramisu.groupapplication.ui.viewmodel.DashboardViewModel
 fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
     onDetail: (String) -> Unit,
-    onAdd: () -> Unit,
-    onProvideFab: (FabConfig) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(Unit) {
-        onProvideFab(
-            FabConfig(
-                visible = true,
-            ) {
-                FloatingActionButton(
-                    onClick = onAdd,
-                ) {
-                    Icon(Icons.Filled.Create, contentDescription = "Add")
-                }
-            }
-        )
-    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -191,7 +172,7 @@ private fun StatusBadge(status: InspectionStatus) {
 
 @Composable
 private fun InfoPill(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     value: String,
     iconTint: Color

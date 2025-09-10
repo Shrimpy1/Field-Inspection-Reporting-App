@@ -1,15 +1,17 @@
 package com.tiramisu.groupapplication.ui.screen
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -18,9 +20,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -30,10 +32,11 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.tiramisu.groupapplication.domain.enums.UserRole
 import androidx.navigation.navArgument
+import com.tiramisu.groupapplication.domain.enums.UserRole
 import com.tiramisu.groupapplication.ui.component.BottomBarConfig
-import com.tiramisu.groupapplication.ui.dashboard.DashboardScreen
+import com.tiramisu.groupapplication.ui.component.FabConfig
+import com.tiramisu.groupapplication.ui.component.TopBarConfig
 import com.tiramisu.groupapplication.ui.viewmodel.AppViewModel
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionLocationViewModel
 import com.tiramisu.groupapplication.ui.viewmodel.MainViewModel
@@ -42,10 +45,10 @@ import kotlinx.coroutines.launch
 sealed class Routes(val route: String) {
     object Auth : Routes("auth")
     object Dashboard : Routes("dashboard")
-    object Create : Routes("create")
     object Review : Routes("review/{inspectionId}") {
         fun createRoute(inspectionId: String) = "review/$inspectionId"
     }
+
     object InspectionDetails : Routes("inspection/{inspectionId}") {
         fun createRoute(inspectionId: String) = "inspection/$inspectionId"
     }
@@ -66,22 +69,21 @@ enum class NavBarDestinations(
     val icon: ImageVector,
     val contentDescription: String
 ) {
-    HOME(Routes.Home.route, "Home", Icons.Default.Home, "Home")
+    DASHBOARD(Routes.Dashboard.route, "Dashboard", Icons.Default.Home, "Home")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App(
-    mainViewModel: MainViewModel = hiltViewModel()
+    mainViewModel: MainViewModel = hiltViewModel(),
+    appVm: AppViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
-
-    val appVm: AppViewModel = hiltViewModel()
     val topBarState = appVm.topBar.collectAsStateWithLifecycle().value
     val bottomBarState = appVm.bottomBar.collectAsStateWithLifecycle().value
     val fabState = appVm.fab.collectAsStateWithLifecycle().value
 
-    val startDestination = NavBarDestinations.HOME
+    val startDestination = NavBarDestinations.DASHBOARD
     var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
     val user by mainViewModel.currentUser.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
@@ -113,7 +115,7 @@ fun App(
         }
     }
 
-    DisposableEffect(navController) {
+    DisposableEffect(navController.currentBackStackEntry) {
         val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
             appVm.reset()
             appVm.setBottomBar(BottomBarConfig(true, defaultNavBar))
@@ -149,57 +151,63 @@ fun App(
     ) { paddingValues ->
         NavHost(
             navController = navController,
-            startDestination = Routes.Home.route,
+            startDestination = Routes.Dashboard.route,
             modifier = Modifier.padding(paddingValues),
             route = "root"
         ) {
-            // Dashboard
-            composable(route = Routes.Home.route) {
-                DashboardScreen(
-                    onDetail = { id ->
-                        navController.navigate(Routes.InspectionDetails.createRoute(id))
-                    },
-                    onAdd = { navController.navigate(Routes.InspectionForm.route) },
-                    onProvideFab = { config -> appVm.setFab(config) },
-                )
-            }
-
+            // Auth
             composable(Routes.Auth.route) {
+                LaunchedEffect(Unit) {
+                    appVm.setBottomBar(BottomBarConfig())
+                }
+
                 AuthScreen()
             }
 
+            // Dashboard
             composable(Routes.Dashboard.route) {
-                Scaffold(
-                    topBar = {
-                        TopAppBar(
+                LaunchedEffect(Unit) {
+                    appVm.setTopBar(
+                        TopBarConfig(
+                            visible = true,
                             title = { Text("Dashboard (${user?.role})") },
                             actions = {
                                 IconButton(onClick = {
                                     coroutineScope.launch { authRepo.signOut() }
                                 }) {
-                                    Icon(Icons.Default.ExitToApp, contentDescription = "Sign Out")
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ExitToApp,
+                                        contentDescription = "Sign Out"
+                                    )
                                 }
                             }
                         )
-                    },
-                    floatingActionButton = {
-                        // Only show the FAB for Inspectors
-                        if (user?.role == UserRole.INSPECTOR.name) {
-                            FloatingActionButton(onClick = { navController.navigate(Routes.Create.route) }) {
-                                Icon(Icons.Default.Add, contentDescription = "Add New Report")
+                    )
+                    appVm.setFab(
+                        FabConfig(
+                            visible = true,
+                        ) {
+                            if (user?.role == UserRole.INSPECTOR.name) {
+                                FloatingActionButton(onClick = { navController.navigate(Routes.InspectionForm.route) }) {
+                                    Icon(Icons.Default.Add, contentDescription = "Add New Report")
+                                }
                             }
                         }
-                    }
-                ) { padding ->
-                    Box(modifier = Modifier.padding(padding)) {
-                        when (user?.role) {
-                            UserRole.INSPECTOR.name -> DashboardScreen(onInspectionClick = { /* Define action if needed */ })
-                            UserRole.SUPERVISOR.name -> SupervisorDashboardScreen(onReportClick = { inspectionId ->
-                                navController.navigate(Routes.Review.createRoute(inspectionId))
-                            })
-                            UserRole.ADMIN.name -> AdminDashboardScreen()
-                        }
-                    }
+                    )
+                }
+
+                when (user?.role) {
+                    UserRole.INSPECTOR.name -> DashboardScreen(
+                        onDetail = { id ->
+                            navController.navigate(Routes.InspectionDetails.createRoute(id))
+                        },
+                    )
+
+                    UserRole.SUPERVISOR.name -> SupervisorDashboardScreen(onReportClick = { inspectionId ->
+                        navController.navigate(Routes.Review.createRoute(inspectionId))
+                    })
+
+                    UserRole.ADMIN.name -> AdminDashboardScreen()
                 }
             }
 
@@ -258,9 +266,9 @@ fun App(
                 }
             }
 
-        composable(Routes.Review.route) {
-            ReportReviewScreen(onNavigateBack = { navController.popBackStack() })
-        }
+            composable(Routes.Review.route) {
+                ReportReviewScreen(onNavigateBack = { navController.popBackStack() })
+            }
 
             // Map view
             composable(
@@ -280,9 +288,9 @@ fun App(
                     onProvideTopBar = { config -> appVm.setTopBar(config) },
                     onBack = { navController.popBackStack() }
                 )
-                }
             }
         }
+    }
 
     LaunchedEffect(user, navController.currentBackStackEntry) {
         val currentRoute = navController.currentBackStackEntry?.destination?.route
@@ -293,12 +301,10 @@ fun App(
         } else if (user != null && currentRoute == Routes.Auth.route) {
             navController.navigate(Routes.Dashboard.route) {
                 popUpTo(Routes.Auth.route) { inclusive = true }
-
-
-    }
-}
+            }
         }
     }
+}
 
 @Composable
 fun InspectionForm(onSaved: () -> Boolean) {
