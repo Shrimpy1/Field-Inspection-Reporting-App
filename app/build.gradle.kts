@@ -29,6 +29,16 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField(
+                "String",
+                "SUPABASE_URL",
+                "\"https://ynwdghcwlazwijeemzgm.supabase.co\""
+            )
+            buildConfigField(
+                "String",
+                "SUPABASE_KEY",
+                "\"sb_publishable_vwq598uQ0H35qry6rYbetg_ST0QFsO3\""
+            )
         }
         debug {
             buildConfigField(
@@ -42,34 +52,22 @@ android {
                 "\"sb_publishable_vwq598uQ0H35qry6rYbetg_ST0QFsO3\""
             )
         }
-        release {
-            buildConfigField(
-                "String",
-                "SUPABASE_URL",
-                "\"https://ynwdghcwlazwijeemzgm.supabase.co\""
-            )
-            buildConfigField(
-                "String",
-                "SUPABASE_KEY",
-                "\"sb_publishable_vwq598uQ0H35qry6rYbetg_ST0QFsO3\""
-            )
-        }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         compose = true
         buildConfig = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
+        kotlinCompilerExtensionVersion = "1.5.3"
     }
 }
 
 kotlin {
-    jvmToolchain(11)
+    jvmToolchain(17) // Updated from 11 to 17
     compilerOptions {
         freeCompilerArgs.addAll(
             "-opt-in=kotlin.time.ExperimentalTime",
@@ -78,10 +76,9 @@ kotlin {
     }
 }
 
-// The conflicting kotlin {} block has been removed.
 
 dependencies {
-    // Core & UI (Your existing dependencies)
+    // Core & UI
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -101,12 +98,12 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
 
-    // Room Database (Offline Storage)
+    // Room Database
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // Hilt (Dependency Injection)
+    // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
@@ -114,6 +111,8 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.auth)
+
 
     // Supabase
     implementation(platform(libs.supabase.bom))
@@ -123,7 +122,11 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.coil.compose)
 
-    // Testing (Your existing dependencies)
+    // Accompanist & Maps
+    implementation(libs.accompanist.permissions)
+    implementation(libs.maps.compose)
+
+    // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -132,3 +135,4 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
+

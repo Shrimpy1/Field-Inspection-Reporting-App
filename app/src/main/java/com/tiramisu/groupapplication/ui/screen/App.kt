@@ -1,13 +1,15 @@
 package com.tiramisu.groupapplication.ui.screen
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -18,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -27,15 +30,22 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.tiramisu.groupapplication.domain.enums.UserRole
 import androidx.navigation.navArgument
 import com.tiramisu.groupapplication.ui.component.BottomBarConfig
 import com.tiramisu.groupapplication.ui.dashboard.DashboardScreen
 import com.tiramisu.groupapplication.ui.viewmodel.AppViewModel
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionLocationViewModel
+import com.tiramisu.groupapplication.ui.viewmodel.MainViewModel
+import kotlinx.coroutines.launch
 
 sealed class Routes(val route: String) {
-    object Home : Routes("home")
     object Auth : Routes("auth")
+    object Dashboard : Routes("dashboard")
+    object Create : Routes("create")
+    object Review : Routes("review/{inspectionId}") {
+        fun createRoute(inspectionId: String) = "review/$inspectionId"
+    }
     object InspectionDetails : Routes("inspection/{inspectionId}") {
         fun createRoute(inspectionId: String) = "inspection/$inspectionId"
     }
@@ -61,7 +71,9 @@ enum class NavBarDestinations(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun App() {
+fun App(
+    mainViewModel: MainViewModel = hiltViewModel()
+) {
     val navController = rememberNavController()
 
     val appVm: AppViewModel = hiltViewModel()
@@ -71,6 +83,9 @@ fun App() {
 
     val startDestination = NavBarDestinations.HOME
     var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
+    val user by mainViewModel.currentUser.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
+    val authRepo = mainViewModel.authRepo
 
     val defaultNavBar: @Composable () -> Unit = {
         NavigationBar {
@@ -149,6 +164,45 @@ fun App() {
                 )
             }
 
+            composable(Routes.Auth.route) {
+                AuthScreen()
+            }
+
+            composable(Routes.Dashboard.route) {
+                Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = { Text("Dashboard (${user?.role})") },
+                            actions = {
+                                IconButton(onClick = {
+                                    coroutineScope.launch { authRepo.signOut() }
+                                }) {
+                                    Icon(Icons.Default.ExitToApp, contentDescription = "Sign Out")
+                                }
+                            }
+                        )
+                    },
+                    floatingActionButton = {
+                        // Only show the FAB for Inspectors
+                        if (user?.role == UserRole.INSPECTOR.name) {
+                            FloatingActionButton(onClick = { navController.navigate(Routes.Create.route) }) {
+                                Icon(Icons.Default.Add, contentDescription = "Add New Report")
+                            }
+                        }
+                    }
+                ) { padding ->
+                    Box(modifier = Modifier.padding(padding)) {
+                        when (user?.role) {
+                            UserRole.INSPECTOR.name -> DashboardScreen(onInspectionClick = { /* Define action if needed */ })
+                            UserRole.SUPERVISOR.name -> SupervisorDashboardScreen(onReportClick = { inspectionId ->
+                                navController.navigate(Routes.Review.createRoute(inspectionId))
+                            })
+                            UserRole.ADMIN.name -> AdminDashboardScreen()
+                        }
+                    }
+                }
+            }
+
             // Detail
             composable(
                 route = Routes.InspectionDetails.route,
@@ -204,6 +258,10 @@ fun App() {
                 }
             }
 
+        composable(Routes.Review.route) {
+            ReportReviewScreen(onNavigateBack = { navController.popBackStack() })
+        }
+
             // Map view
             composable(
                 route = Routes.InspectionMap.route,
@@ -222,7 +280,27 @@ fun App() {
                     onProvideTopBar = { config -> appVm.setTopBar(config) },
                     onBack = { navController.popBackStack() }
                 )
+                }
             }
         }
+
+    LaunchedEffect(user, navController.currentBackStackEntry) {
+        val currentRoute = navController.currentBackStackEntry?.destination?.route
+        if (user == null && currentRoute != Routes.Auth.route) {
+            navController.navigate(Routes.Auth.route) {
+                popUpTo(navController.graph.id) { inclusive = true }
+            }
+        } else if (user != null && currentRoute == Routes.Auth.route) {
+            navController.navigate(Routes.Dashboard.route) {
+                popUpTo(Routes.Auth.route) { inclusive = true }
+
+
     }
+}
+        }
+    }
+
+@Composable
+fun InspectionForm(onSaved: () -> Boolean) {
+    TODO("Not yet implemented")
 }

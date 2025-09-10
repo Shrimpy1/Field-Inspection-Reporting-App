@@ -35,7 +35,7 @@ data class InspectionFormInfo(
     val status: InspectionStatus = InspectionStatus.PENDING_REVIEW,
     val saving: Boolean = false,
     val errors: InspectionFormError = InspectionFormError(),
-    val generalError: String? = null, // non-field error (e.g., repo failure)
+    val generalError: String? = null,
     val editingId: String? = null,
     val lat: Double? = null,
     val lng: Double? = null,

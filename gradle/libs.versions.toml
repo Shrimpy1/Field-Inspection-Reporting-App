@@ -1,8 +1,10 @@
 [versions]
 # Android Gradle Plugin and Kotlin
-agp = "8.12.2"
+agp = "8.13.0"
 kotlin = "2.2.10"
 ksp = "2.2.10-2.0.2"
+composeCompiler = "1.5.3"
+
 
 # AndroidX Libraries
 coreKtx = "1.17.0"
@@ -25,6 +27,11 @@ supabaseBom = "3.2.2"
 
 # Google Play Services
 playServicesLocation = "21.3.0"
+maps = "19.2.0"
+mapsCompose = "6.9.0"
+
+# Accompanist
+accompanist = "0.37.3"
 
 # Other Libraries
 coil = "2.7.0"
@@ -68,11 +75,17 @@ androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-com
 # Location & Images
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
+play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "maps" }
+maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
+
+# Accompanist
+accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
 
 # Firebase
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
+firebase-auth = { module = "com.google.firebase:firebase-auth" }
 
 # Supabase
 supabase-bom = { group = "io.github.jan-tennert.supabase", name = "bom", version.ref = "supabaseBom" }
@@ -84,9 +97,6 @@ androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "j
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
-maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
-play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
-accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanistPermissions" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
