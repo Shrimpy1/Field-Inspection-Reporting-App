@@ -2,33 +2,35 @@ package com.tiramisu.groupapplication.ui.screen
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.tiramisu.groupapplication.ui.component.BottomBarConfig
 import com.tiramisu.groupapplication.ui.dashboard.DashboardScreen
+import com.tiramisu.groupapplication.ui.viewmodel.AppViewModel
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionLocationViewModel
 
 sealed class Routes(val route: String) {
@@ -59,8 +61,14 @@ enum class NavBarDestinations(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppNavHost() {
+fun App() {
     val navController = rememberNavController()
+
+    val appVm: AppViewModel = hiltViewModel()
+    val topBarState = appVm.topBar.collectAsStateWithLifecycle().value
+    val bottomBarState = appVm.bottomBar.collectAsStateWithLifecycle().value
+    val fabState = appVm.fab.collectAsStateWithLifecycle().value
+
     val startDestination = NavBarDestinations.HOME
     var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
 
@@ -90,30 +98,55 @@ fun AppNavHost() {
         }
     }
 
-    var topBar: @Composable () -> Unit by remember { mutableStateOf({}) }
-    var bottomBar: @Composable () -> Unit by remember { mutableStateOf(defaultNavBar) }
-    var fab: @Composable () -> Unit by remember { mutableStateOf({}) }
+    DisposableEffect(navController) {
+        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+            appVm.reset()
+            appVm.setBottomBar(BottomBarConfig(true, defaultNavBar))
+        }
+
+        navController.addOnDestinationChangedListener(listener)
+
+        onDispose {
+            navController.removeOnDestinationChangedListener(listener)
+        }
+    }
 
     Scaffold(
-        topBar = topBar,
-        floatingActionButton = fab
+        topBar = {
+            if (topBarState.visible) {
+                TopAppBar(
+                    title = topBarState.title,
+                    navigationIcon = topBarState.navIcon,
+                    actions = topBarState.actions,
+                )
+            }
+        },
+        floatingActionButton = {
+            if (fabState.visible) {
+                fabState.content()
+            }
+        },
+        bottomBar = {
+            if (bottomBarState.visible) {
+                bottomBarState.content()
+            }
+        }
     ) { paddingValues ->
         NavHost(
             navController = navController,
             startDestination = Routes.Home.route,
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier.padding(paddingValues),
+            route = "root"
         ) {
             // Dashboard
             composable(route = Routes.Home.route) {
-                fab = {
-                    FloatingActionButton(onClick = { navController.navigate(Routes.InspectionForm.route) }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add New Report")
-                    }
-                }
-
-                DashboardScreen(onInspectionClick = { id ->
-                    navController.navigate(Routes.InspectionDetails.createRoute(id))
-                })
+                DashboardScreen(
+                    onDetail = { id ->
+                        navController.navigate(Routes.InspectionDetails.createRoute(id))
+                    },
+                    onAdd = { navController.navigate(Routes.InspectionForm.route) },
+                    onProvideFab = { config -> appVm.setFab(config) },
+                )
             }
 
             // Detail
@@ -126,7 +159,8 @@ fun AppNavHost() {
                 InspectionDetailsRoute(
                     onBack = { navController.popBackStack() },
                     onEdit = { id -> navController.navigate(Routes.InspectionEdit.createRoute(id)) },
-                    onOpenMap = { id -> navController.navigate(Routes.InspectionMap.createRoute(id)) }
+                    onOpenMap = { id -> navController.navigate(Routes.InspectionMap.createRoute(id)) },
+                    onProvideTopBar = { config -> appVm.setTopBar(config) }
                 )
             }
 
@@ -140,7 +174,8 @@ fun AppNavHost() {
                             launchSingleTop = true
                         }
                     },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onProvideTopBar = { config -> appVm.setTopBar(config) }
                 )
             }
 
@@ -160,10 +195,11 @@ fun AppNavHost() {
                         onSaved = { _ ->
                             navController.popBackStack()
                         },
-                        onBack = { navController.popBackStack() },
                         onMapNavigate = {
-                            navController.navigate("inspection/$inspectionId/map")
-                        }
+                            navController.navigate(Routes.InspectionMap.createRoute(inspectionId))
+                        },
+                        onProvideTopBar = { config -> appVm.setTopBar(config) },
+                        onBack = { navController.popBackStack() }
                     )
                 }
             }
@@ -175,9 +211,17 @@ fun AppNavHost() {
                     navArgument("inspectionId") { type = NavType.StringType }
                 )
             ) { backStackEntry ->
+                LaunchedEffect(Unit) {
+                    appVm.setBottomBar(BottomBarConfig(false))
+                }
+
                 val vm: InspectionLocationViewModel = hiltViewModel(backStackEntry)
 
-                InspectionLocationScreen(viewModel = vm)
+                InspectionLocationScreen(
+                    viewModel = vm,
+                    onProvideTopBar = { config -> appVm.setTopBar(config) },
+                    onBack = { navController.popBackStack() }
+                )
             }
         }
     }

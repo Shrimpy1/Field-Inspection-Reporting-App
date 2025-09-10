@@ -1,19 +1,11 @@
 package com.tiramisu.groupapplication.ui.screen
 
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tiramisu.groupapplication.ui.component.InspectionForm
+import com.tiramisu.groupapplication.ui.component.TopBarConfig
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionFormViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -21,32 +13,21 @@ import com.tiramisu.groupapplication.ui.viewmodel.InspectionFormViewModel
 fun InspectionEditScreen(
     inspectionId: String,
     onSaved: (String) -> Unit,
+    onMapNavigate: () -> Unit,
+    viewModel: InspectionFormViewModel = hiltViewModel(),
+    onProvideTopBar: (TopBarConfig) -> Unit,
     onBack: () -> Unit,
-    onMapNavigate: () -> Unit
 ) {
-    val viewModel: InspectionFormViewModel = hiltViewModel()
-
     LaunchedEffect(inspectionId) {
         viewModel.loadForEdit(inspectionId)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Edit Inspection") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        InspectionForm(
-            modifier = Modifier.padding(padding),
-            viewModel = viewModel,
-            onSaved = onSaved,
-            onMapNavigate = onMapNavigate
-        )
-    }
+    InspectionForm(
+        viewModel = viewModel,
+        onSaved = onSaved,
+        onMapNavigate = onMapNavigate,
+        onProvideTopBar = onProvideTopBar,
+        onBack = onBack,
+        screenTitle = "Edit Inspection"
+    )
 }

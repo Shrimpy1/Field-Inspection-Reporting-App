@@ -4,8 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -20,26 +20,21 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tiramisu.groupapplication.domain.model.Inspection
+import com.tiramisu.groupapplication.ui.component.TopBarConfig
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionDetailsEvent
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionDetailsState
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionDetailsViewModel
@@ -52,28 +47,31 @@ fun InspectionDetailsRoute(
     onBack: () -> Unit,
     onEdit: (String) -> Unit,
     onOpenMap: (String) -> Unit,
-    viewModel: InspectionDetailsViewModel = hiltViewModel()
+    viewModel: InspectionDetailsViewModel = hiltViewModel(),
+    onProvideTopBar: (TopBarConfig) -> Unit
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { ev ->
             when (ev) {
                 is InspectionDetailsEvent.Deleted -> onBack()
-                is InspectionDetailsEvent.Error -> snackbarHostState.showSnackbar(ev.message)
+                is InspectionDetailsEvent.Error -> {
+                    //TODO: implement error screen
+                }
             }
         }
     }
 
     InspectionDetailsScreen(
-        state = state,
-        snackbarHostState = snackbarHostState,
         onBack = onBack,
+        state = state,
+        onDelete = { confirmDelete = true },
+        onProvideTopBar = onProvideTopBar,
         onEdit = { state.inspection?.id?.let(onEdit) },
-        onOpenMap = { state.inspection?.id?.let(onOpenMap) },
-        onDeleteClick = { confirmDelete = true }
+        onOpenMap = { state.inspection?.id?.let(onOpenMap) }
     )
 
     if (confirmDelete) {
@@ -101,85 +99,75 @@ fun InspectionDetailsRoute(
 @Composable
 fun InspectionDetailsScreen(
     state: InspectionDetailsState,
-    snackbarHostState: SnackbarHostState,
-    onBack: () -> Unit,
-    onEdit: () -> Unit,
-    onOpenMap: () -> Unit,
-    onDeleteClick: () -> Unit
+    onBack: () -> Unit = {},
+    onDelete: () -> Unit = {},
+    onEdit: () -> Unit = {},
+    onOpenMap: () -> Unit = {},
+    onProvideTopBar: (TopBarConfig) -> Unit
 ) {
     val inspection = state.inspection
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        inspection?.title ?: "Inspection",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
+    val actions: @Composable RowScope.() -> Unit = {
+        IconButton(
+            onClick = onOpenMap,
+            enabled = inspection?.lat != null && inspection.lng != null && inspection.id.isNotBlank()
+        ) {
+            Icon(Icons.Filled.Place, contentDescription = "Open Map")
+        }
+        IconButton(
+            onClick = onEdit,
+            enabled = inspection?.id?.isNotBlank() == true
+        ) {
+            Icon(Icons.Filled.Edit, contentDescription = "Edit")
+        }
+        IconButton(
+            onClick = onDelete,
+            enabled = inspection != null && !state.deleteInProgress
+        ) {
+            Icon(Icons.Filled.Delete, contentDescription = "Delete")
+        }
+    }
+
+    LaunchedEffect(inspection?.id, inspection?.lat, inspection?.lng) {
+        onProvideTopBar(
+            TopBarConfig(
+                visible = true,
+                title = { Text(inspection?.title ?: "Inspection Details") },
+                navIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    IconButton(
-                        onClick = onOpenMap,
-                        enabled = inspection?.lat != null && inspection.lng != null && inspection.id.isNotBlank()
-                    ) {
-                        Icon(Icons.Filled.Place, contentDescription = "Open Map")
-                    }
-                    IconButton(
-                        onClick = onEdit,
-                        enabled = inspection?.id?.isNotBlank() == true
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit")
-                    }
-                    IconButton(
-                        onClick = onDeleteClick,
-                        enabled = inspection != null && !state.deleteInProgress
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete")
-                    }
-                }
+                actions = actions
             )
-        },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { padding ->
-        when {
-            state.isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
+        )
+    }
 
-            inspection == null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Inspection not found")
-                }
+    when {
+        state.isLoading -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
             }
+        }
 
-            else -> {
-                InspectionDetailsContent(
-                    modifier = Modifier.padding(padding),
-                    inspection = inspection
-                )
+        inspection == null -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Inspection not found")
             }
+        }
+
+        else -> {
+            InspectionDetailsContent(
+                inspection = inspection
+            )
         }
     }
 }
@@ -190,7 +178,7 @@ private fun InspectionDetailsContent(
     inspection: Inspection
 ) {
     val items = buildList<Pair<String, String>> {
-        add("Title" to inspection.title)
+//        add("Title" to inspection.title)
         add("Created" to formatInstant(inspection.createdAt))
         add("Type" to inspection.type)
         add("Status" to inspection.status.name)

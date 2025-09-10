@@ -1,8 +1,8 @@
 package com.tiramisu.groupapplication.ui.component
 
 import android.Manifest
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -24,7 +24,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MenuAnchorType
@@ -41,8 +40,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
@@ -61,6 +60,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+@SuppressLint("DefaultLocale")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun InspectionForm(
@@ -68,6 +68,9 @@ fun InspectionForm(
     viewModel: InspectionFormViewModel = hiltViewModel(),
     onSaved: (String) -> Unit = {},
     onMapNavigate: () -> Unit = {},
+    onProvideTopBar: (TopBarConfig) -> Unit,
+    onBack: () -> Unit,
+    screenTitle: String = "Add Inspection"
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formData by viewModel.formData.collectAsStateWithLifecycle()
@@ -126,6 +129,26 @@ fun InspectionForm(
     }
 
     LaunchedEffect(Unit) {
+        onProvideTopBar(
+            TopBarConfig(
+                visible = true,
+                title = { Text(screenTitle) },
+                navIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    Button(
+                        onClick = { viewModel.save() },
+                        enabled = !formData.saving
+                    ) {
+                        Text(if (formData.saving) "Saving..." else "Save")
+                    }
+                }
+            )
+        )
+
         viewModel.events.collect { evt ->
             when (evt) {
                 is InspectionFormViewModel.UiEvent.Saved -> onSaved(evt.id)
@@ -186,8 +209,6 @@ fun InspectionForm(
             singleLine = true
         )
 
-        Spacer(Modifier.height(12.dp))
-
         StatusDropdown(
             selected = formData.status,
             onSelected = viewModel::setStatus,
@@ -209,29 +230,35 @@ fun InspectionForm(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            FilledTonalButton(
-                onClick = { getCurrentLocation() },
-                enabled = !locating && !formData.saving,
-            ) {
-                Text("Get Current Location")
-            }
+            OutlinedTextField(
+                value = formData.lat?.let { String.format("%.3f", it) } ?: "No location",
+                modifier = Modifier.weight(1f),
+                readOnly = true,
+                onValueChange = {},
+                label = { Text("Latitude") },
+            )
 
-            Box(
-                modifier = Modifier
-                    .clip(CircleShape)
-            ) {
-                FilledTonalIconButton(
-                    onClick = onMapNavigate,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                ) {
-                    Icon(
-                        Icons.Outlined.LocationOn,
-                        contentDescription = "Pick on map"
-                    )
-                }
-            }
+            OutlinedTextField(
+                value = formData.lng?.let { String.format("%.3f", it) } ?: "No location",
+                modifier = Modifier.weight(1f),
+                readOnly = true,
+                onValueChange = {},
+                label = { Text("Longitude") },
+            )
+        }
+
+        FilledTonalButton(
+            onClick = { getCurrentLocation() },
+        ) {
+            Text("Pick current location")
+
+            Icon(
+                Icons.Outlined.LocationOn,
+                contentDescription = "Pick current location"
+            )
         }
 
         if (formData.generalError != null) {
@@ -241,7 +268,7 @@ fun InspectionForm(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.Center
         ) {
             Button(
                 onClick = { viewModel.save() },

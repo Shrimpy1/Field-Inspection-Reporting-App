@@ -91,6 +91,11 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
+    // Google map
+    implementation(libs.maps.compose)
+    implementation(libs.play.services.maps)
+    implementation(libs.accompanist.permissions)
+
     // ViewModel & Navigation
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
@@ -99,9 +104,6 @@ dependencies {
     // Room Database (Offline Storage)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.maps.compose)
-    implementation(libs.play.services.maps)
-    implementation(libs.accompanist.permissions)
     ksp(libs.androidx.room.compiler)
 
     // Hilt (Dependency Injection)

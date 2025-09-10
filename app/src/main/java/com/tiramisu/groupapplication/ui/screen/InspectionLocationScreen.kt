@@ -7,7 +7,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,18 +28,35 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapsComposeExperimentalApi
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.tiramisu.groupapplication.ui.component.TopBarConfig
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionLocationViewModel
 import com.tiramisu.groupapplication.ui.viewmodel.ReportLocState
-import com.tiramisu.groupapplication.util.map.moveCameraTo
 
+@SuppressLint("UnrememberedGetBackStackEntry")
 @Composable
 fun InspectionLocationScreen(
-    viewModel: InspectionLocationViewModel = hiltViewModel()
+    viewModel: InspectionLocationViewModel = hiltViewModel(),
+    onProvideTopBar: (TopBarConfig) -> Unit,
+    onBack: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        onProvideTopBar(
+            TopBarConfig(
+                visible = true,
+                navIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+            )
+        )
+    }
 
     when (val state = uiState) {
         is ReportLocState.Loading -> {
@@ -63,7 +84,7 @@ fun InspectionLocationScreen(
 }
 
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalPermissionsApi::class, MapsComposeExperimentalApi::class)
 @SuppressLint("MissingPermission", "UnrememberedMutableState")
 @Composable
 fun LocationMap(
@@ -84,14 +105,14 @@ fun LocationMap(
 
     val latLng = LatLng(lat, lng)
     val cameraPositionState = rememberCameraPositionState {
-        CameraPosition.fromLatLngZoom(latLng, 16f)
+        position = CameraPosition.fromLatLngZoom(latLng, 16f)
     }
 
-    LaunchedEffect(permissions.allPermissionsGranted) {
-        if (permissions.allPermissionsGranted) {
-            moveCameraTo(cameraPositionState, latLng)
-        }
-    }
+//    LaunchedEffect(permissions.allPermissionsGranted) {
+//        if (permissions.allPermissionsGranted) {
+//            moveCameraTo(cameraPositionState, latLng)
+//        }
+//    }
 
     GoogleMap(
         modifier = Modifier.fillMaxSize(),
