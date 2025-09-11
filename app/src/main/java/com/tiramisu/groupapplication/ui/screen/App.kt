@@ -25,7 +25,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.tiramisu.groupapplication.domain.enums.UserRole
+import com.tiramisu.groupapplication.ui.component.ConnectivityToasts
 import com.tiramisu.groupapplication.ui.component.NavBar
+import com.tiramisu.groupapplication.ui.viewmodel.AppViewModel
 import com.tiramisu.groupapplication.ui.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
 
@@ -33,12 +35,15 @@ import kotlinx.coroutines.launch
 @Composable
 fun App(
     mainViewModel: MainViewModel = hiltViewModel(),
+    appViewModel: AppViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
 
     val user by mainViewModel.currentUser.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     val authRepo = mainViewModel.authRepo
+
+    val isOnline by appViewModel.isOnline.collectAsStateWithLifecycle()
 
     NavHost(
         navController = navController,
@@ -148,6 +153,8 @@ fun App(
             )
         }
     }
+
+    ConnectivityToasts(viewModel = appViewModel)
 
     LaunchedEffect(user, navController.currentBackStackEntry) {
         val currentRoute = navController.currentBackStackEntry?.destination?.route
