@@ -25,7 +25,7 @@ sealed class InspectionFormState {
     data class Error(val message: String) : InspectionFormState()
 }
 
-data class InspectionFormInfo(
+data class InspectionFormData(
     val createdAtMillis: Long = System.currentTimeMillis(),
     val type: String = "",
     val title: String = "",
@@ -58,7 +58,7 @@ class InspectionFormViewModel @Inject constructor(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<InspectionFormState>(InspectionFormState.Idle)
     val uiState: StateFlow<InspectionFormState> = _uiState.asStateFlow()
-    val formData = MutableStateFlow(InspectionFormInfo())
+    val formData = MutableStateFlow(InspectionFormData())
 
     sealed interface UiEvent {
         data class Saved(val id: String) : UiEvent

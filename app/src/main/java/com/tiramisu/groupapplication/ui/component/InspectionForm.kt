@@ -28,9 +28,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -48,10 +50,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.LocationServices
 import com.tiramisu.groupapplication.domain.enums.InspectionStatus
+import com.tiramisu.groupapplication.ui.viewmodel.InspectionFormData
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionFormViewModel
 import com.tiramisu.groupapplication.util.map.awaitBestLocation
 import kotlinx.coroutines.launch
@@ -67,10 +71,9 @@ fun InspectionForm(
     modifier: Modifier = Modifier,
     viewModel: InspectionFormViewModel = hiltViewModel(),
     onSaved: (String) -> Unit = {},
-    onMapNavigate: () -> Unit = {},
-    onProvideTopBar: (TopBarConfig) -> Unit,
     onBack: () -> Unit,
-    screenTitle: String = "Add Inspection"
+    screenTitle: String = "Add Inspection",
+    navController: NavHostController,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val formData by viewModel.formData.collectAsStateWithLifecycle()
@@ -129,11 +132,22 @@ fun InspectionForm(
     }
 
     LaunchedEffect(Unit) {
-        onProvideTopBar(
-            TopBarConfig(
-                visible = true,
+        viewModel.events.collect { evt ->
+            when (evt) {
+                is InspectionFormViewModel.UiEvent.Saved -> onSaved(evt.id)
+                is InspectionFormViewModel.UiEvent.Error -> { /* optional toast/snackbar */
+                }
+            }
+        }
+    }
+
+    //TODO: make ui for different states
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
                 title = { Text(screenTitle) },
-                navIcon = {
+                navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
@@ -147,29 +161,73 @@ fun InspectionForm(
                     }
                 }
             )
+        },
+        bottomBar = { NavBar(navController = navController) }
+    ) { padding ->
+        FormContent(
+            modifier = modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(padding),
+            onGetLocation = { getCurrentLocation() },
+            formData = formData,
+            onSetType = viewModel::setType,
+            onSetTitle = viewModel::setTitle,
+            onSetNotes = viewModel::setNotes,
+            onSetScore = viewModel::setScore,
+            onSetOutcome = viewModel::setOutcome,
+            onSetStatus = viewModel::setStatus,
+            createdText = createdText,
+            onShowDateTimeDialog = { showDateTimeDialog = true },
+            onSave = { viewModel.save() }
         )
 
-        viewModel.events.collect { evt ->
-            when (evt) {
-                is InspectionFormViewModel.UiEvent.Saved -> onSaved(evt.id)
-                is InspectionFormViewModel.UiEvent.Error -> { /* optional toast/snackbar */
-                }
-            }
+    }
+
+    if (!permissionsState.allPermissionsGranted) {
+        Button(
+            onClick = { permissionsState.launchMultiplePermissionRequest() }
+        ) {
+            Text("Request Location Permissions")
         }
     }
 
-    //TODO: make ui for different states
+    if (showDateTimeDialog) {
+        DateTimePickerDialog(
+            initialEpochMillis = formData.createdAtMillis,
+            onConfirm = {
+                viewModel.setDateTime(it)
+                showDateTimeDialog = false
+            },
+            onDismiss = { showDateTimeDialog = false }
+        )
+    }
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FormContent(
+    modifier: Modifier = Modifier,
+    onGetLocation: () -> Unit,
+    formData: InspectionFormData,
+    onSetType: (String) -> Unit,
+    onSetTitle: (String) -> Unit,
+    onSetNotes: (String) -> Unit,
+    onSetScore: (String) -> Unit,
+    onSetOutcome: (String) -> Unit,
+    onSetStatus: (InspectionStatus) -> Unit,
+    createdText: String = "",
+    onShowDateTimeDialog: () -> Unit,
+    onSave: () -> Unit
+) {
     Column(
         modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         OutlinedTextField(
             value = formData.type,
-            onValueChange = viewModel::setType,
+            onValueChange = onSetType,
             label = { Text("Type") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
@@ -177,7 +235,7 @@ fun InspectionForm(
 
         OutlinedTextField(
             value = formData.title,
-            onValueChange = viewModel::setTitle,
+            onValueChange = onSetTitle,
             label = { Text("Title") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
@@ -185,7 +243,7 @@ fun InspectionForm(
 
         OutlinedTextField(
             value = formData.notes,
-            onValueChange = viewModel::setNotes,
+            onValueChange = onSetNotes,
             label = { Text("Notes") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = false,
@@ -194,7 +252,7 @@ fun InspectionForm(
 
         OutlinedTextField(
             value = formData.score,
-            onValueChange = viewModel::setScore,
+            onValueChange = onSetScore,
             label = { Text("Score") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
@@ -203,7 +261,7 @@ fun InspectionForm(
 
         OutlinedTextField(
             value = formData.outcome,
-            onValueChange = viewModel::setOutcome,
+            onValueChange = onSetOutcome,
             label = { Text("Outcome") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
@@ -211,7 +269,7 @@ fun InspectionForm(
 
         StatusDropdown(
             selected = formData.status,
-            onSelected = viewModel::setStatus,
+            onSelected = onSetStatus,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -222,7 +280,7 @@ fun InspectionForm(
             label = { Text("Created At") },
             readOnly = true,
             trailingIcon = {
-                IconButton(onClick = { showDateTimeDialog = true }) {
+                IconButton(onClick = onShowDateTimeDialog) {
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = false)
                 }
             }
@@ -251,7 +309,7 @@ fun InspectionForm(
         }
 
         FilledTonalButton(
-            onClick = { getCurrentLocation() },
+            onClick = onGetLocation,
         ) {
             Text("Pick current location")
 
@@ -262,7 +320,7 @@ fun InspectionForm(
         }
 
         if (formData.generalError != null) {
-            Text(text = formData.generalError ?: "", color = Color.Red)
+            Text(text = formData.generalError, color = Color.Red)
             Spacer(Modifier.height(8.dp))
         }
 
@@ -271,31 +329,12 @@ fun InspectionForm(
             horizontalArrangement = Arrangement.Center
         ) {
             Button(
-                onClick = { viewModel.save() },
+                onClick = onSave,
                 enabled = !formData.saving
             ) {
                 Text(if (formData.saving) "Saving..." else "Save")
             }
         }
-    }
-
-    if (!permissionsState.allPermissionsGranted) {
-        Button(
-            onClick = { permissionsState.launchMultiplePermissionRequest() }
-        ) {
-            Text("Request Location Permissions")
-        }
-    }
-
-    if (showDateTimeDialog) {
-        DateTimePickerDialog(
-            initialEpochMillis = formData.createdAtMillis,
-            onConfirm = {
-                viewModel.setDateTime(it)
-                showDateTimeDialog = false
-            },
-            onDismiss = { showDateTimeDialog = false }
-        )
     }
 }
 

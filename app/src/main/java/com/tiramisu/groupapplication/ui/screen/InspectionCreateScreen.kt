@@ -2,22 +2,23 @@ package com.tiramisu.groupapplication.ui.screen
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavHostController
 import com.tiramisu.groupapplication.ui.component.InspectionForm
-import com.tiramisu.groupapplication.ui.component.TopBarConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InspectionCreateScreen(
-    onSaved: (String) -> Unit,
-    onBack: () -> Unit,
-    onMapNavigate: () -> Unit = {},
-    onProvideTopBar: (TopBarConfig) -> Unit,
+    navController: NavHostController
 ) {
     InspectionForm(
-        onSaved = onSaved,
-        onMapNavigate = onMapNavigate,
-        onProvideTopBar = onProvideTopBar,
-        onBack = onBack,
-        screenTitle = "Create Inspection"
+        onSaved = { newId ->
+            // After creating, navigate to details (or wherever you prefer)
+            navController.navigate(Routes.InspectionDetails.createRoute(newId)) {
+                launchSingleTop = true
+            }
+        },
+        onBack = { navController.popBackStack() },
+        screenTitle = "Create Inspection",
+        navController = navController
     )
 }

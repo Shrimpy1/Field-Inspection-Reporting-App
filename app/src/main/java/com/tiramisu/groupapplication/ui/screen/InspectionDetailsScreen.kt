@@ -4,8 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -20,8 +20,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,8 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import com.tiramisu.groupapplication.domain.model.Inspection
-import com.tiramisu.groupapplication.ui.component.TopBarConfig
+import com.tiramisu.groupapplication.ui.component.NavBar
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionDetailsEvent
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionDetailsState
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionDetailsViewModel
@@ -44,20 +47,16 @@ import kotlin.time.Instant
 
 @Composable
 fun InspectionDetailsRoute(
-    onBack: () -> Unit,
-    onEdit: (String) -> Unit,
-    onOpenMap: (String) -> Unit,
     viewModel: InspectionDetailsViewModel = hiltViewModel(),
-    onProvideTopBar: (TopBarConfig) -> Unit
+    navController: NavHostController
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
 
-
     LaunchedEffect(Unit) {
         viewModel.events.collect { ev ->
             when (ev) {
-                is InspectionDetailsEvent.Deleted -> onBack()
+                is InspectionDetailsEvent.Deleted -> navController.popBackStack()
                 is InspectionDetailsEvent.Error -> {
                     //TODO: implement error screen
                 }
@@ -66,12 +65,28 @@ fun InspectionDetailsRoute(
     }
 
     InspectionDetailsScreen(
-        onBack = onBack,
+        onBack = { navController.popBackStack() },
         state = state,
         onDelete = { confirmDelete = true },
-        onProvideTopBar = onProvideTopBar,
-        onEdit = { state.inspection?.id?.let(onEdit) },
-        onOpenMap = { state.inspection?.id?.let(onOpenMap) }
+        onEdit = {
+            state.inspection?.id?.let {
+                navController.navigate(
+                    Routes.InspectionEdit.createRoute(
+                        it
+                    )
+                )
+            }
+        },
+        onOpenMap = {
+            state.inspection?.id?.let {
+                navController.navigate(
+                    Routes.InspectionMap.createRoute(
+                        it
+                    )
+                )
+            }
+        },
+        navController = navController
     )
 
     if (confirmDelete) {
@@ -103,71 +118,77 @@ fun InspectionDetailsScreen(
     onDelete: () -> Unit = {},
     onEdit: () -> Unit = {},
     onOpenMap: () -> Unit = {},
-    onProvideTopBar: (TopBarConfig) -> Unit
+    navController: NavHostController
 ) {
     val inspection = state.inspection
 
-    val actions: @Composable RowScope.() -> Unit = {
-        IconButton(
-            onClick = onOpenMap,
-            enabled = inspection?.lat != null && inspection.lng != null && inspection.id.isNotBlank()
-        ) {
-            Icon(Icons.Filled.Place, contentDescription = "Open Map")
-        }
-        IconButton(
-            onClick = onEdit,
-            enabled = inspection?.id?.isNotBlank() == true
-        ) {
-            Icon(Icons.Filled.Edit, contentDescription = "Edit")
-        }
-        IconButton(
-            onClick = onDelete,
-            enabled = inspection != null && !state.deleteInProgress
-        ) {
-            Icon(Icons.Filled.Delete, contentDescription = "Delete")
-        }
-    }
-
-    LaunchedEffect(inspection?.id, inspection?.lat, inspection?.lng) {
-        onProvideTopBar(
-            TopBarConfig(
-                visible = true,
+    Scaffold(
+        topBar = {
+            TopAppBar(
                 title = { Text(inspection?.title ?: "Inspection Details") },
-                navIcon = {
+                navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = actions
+                actions = {
+                    IconButton(
+                        onClick = onOpenMap,
+                        enabled = inspection?.lat != null && inspection.lng != null && inspection.id.isNotBlank()
+                    ) {
+                        Icon(Icons.Filled.Place, contentDescription = "Open Map")
+                    }
+                    IconButton(
+                        onClick = onEdit,
+                        enabled = inspection?.id?.isNotBlank() == true
+                    ) {
+                        Icon(Icons.Filled.Edit, contentDescription = "Edit")
+                    }
+                    IconButton(
+                        onClick = onDelete,
+                        enabled = inspection != null && !state.deleteInProgress
+                    ) {
+                        Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                    }
+                }
             )
-        )
-    }
-
-    when {
-        state.isLoading -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+        },
+        bottomBar = {
+            NavBar(navController = navController)
         }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            when {
+                state.isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
 
-        inspection == null -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Inspection not found")
+                inspection == null -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Inspection not found")
+                    }
+                }
+
+                else -> {
+                    InspectionDetailsContent(
+                        inspection = inspection
+                    )
+                }
             }
-        }
-
-        else -> {
-            InspectionDetailsContent(
-                inspection = inspection
-            )
         }
     }
 }
