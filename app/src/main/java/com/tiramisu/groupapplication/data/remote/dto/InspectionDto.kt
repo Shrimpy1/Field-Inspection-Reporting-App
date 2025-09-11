@@ -6,6 +6,7 @@ import kotlin.time.ExperimentalTime
 
 data class InspectionDto @OptIn(ExperimentalTime::class) constructor(
     @ServerTimestamp val createdAt: Timestamp? = null,
+    @ServerTimestamp val updatedAt: Timestamp? = null,
     val type: String = "",
     val title: String = "",
     val notes: String = "",

@@ -4,6 +4,8 @@ import com.google.firebase.Firebase
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
+import com.google.firebase.firestore.firestoreSettings
+import com.google.firebase.firestore.persistentCacheSettings
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,7 +17,11 @@ import javax.inject.Singleton
 object FirestoreModule {
     @Provides
     @Singleton
-    fun provideFirestore(): FirebaseFirestore = Firebase.firestore
+    fun provideFirestore(): FirebaseFirestore = Firebase.firestore.apply {
+        firestoreSettings = firestoreSettings {
+            setLocalCacheSettings(persistentCacheSettings { })
+        }
+    }
 
     @Provides
     @InspectionCollection

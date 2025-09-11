@@ -16,6 +16,8 @@ private fun String.toInspectionStatus(): InspectionStatus =
 fun InspectionDto.toInspection(id: String): Inspection = Inspection(
     createdAt = this.createdAt?.toDate()?.time?.let { Instant.fromEpochMilliseconds(it) }
         ?: Clock.System.now(),
+    updatedAt = this.updatedAt?.toDate()?.time?.let { Instant.fromEpochMilliseconds(it) }
+        ?: Clock.System.now(),
     id = id,
     type = this.type,
     title = this.title,
@@ -25,12 +27,13 @@ fun InspectionDto.toInspection(id: String): Inspection = Inspection(
     status = this.status.toInspectionStatus(),
     lat = this.latitude,
     lng = this.longitude,
-    isSynced = true
+    pendingSync = true
 )
 
 @OptIn(ExperimentalTime::class)
 fun Inspection.toInspectionDto(): InspectionDto = InspectionDto(
     createdAt = Timestamp(Date(this.createdAt.toEpochMilliseconds())),
+    updatedAt = Timestamp(Date(this.updatedAt.toEpochMilliseconds())),
     type = this.type,
     title = this.title,
     notes = this.notes,

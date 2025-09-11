@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class DashboardState(
@@ -31,10 +30,4 @@ class DashboardViewModel @Inject constructor(
         // Use the corrected function name
         repo.startRealtimeSync()
     }
-
-    fun refresh() = viewModelScope.launch {
-        // Use the corrected function signature
-        repo.syncOnce()
-    }
 }
-

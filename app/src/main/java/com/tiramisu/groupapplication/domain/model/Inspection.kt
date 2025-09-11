@@ -4,14 +4,17 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.google.firebase.firestore.Exclude
 import com.tiramisu.groupapplication.domain.enums.InspectionStatus
+import java.util.UUID
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 @Entity(tableName = "inspection_reports")
 data class Inspection @OptIn(ExperimentalTime::class) constructor(
-    @PrimaryKey @get:Exclude @set:Exclude var id: String = "",
+    @PrimaryKey @get:Exclude @set:Exclude var id: String = UUID.randomUUID().toString()
+        .replace("-", ""),
     val createdAt: Instant = Clock.System.now(),
+    val updatedAt: Instant = Clock.System.now(),
     val type: String,
     val title: String,
     val notes: String,
@@ -20,9 +23,8 @@ data class Inspection @OptIn(ExperimentalTime::class) constructor(
     val status: InspectionStatus,
     val lat: Double?,
     val lng: Double?,
-    val isSynced: Boolean = false,
+    val pendingSync: Boolean = false,
     val reviewNotes: String? = null,
     val reviewedBy: String? = null,
     val reviewedAt: Instant? = null
 )
-

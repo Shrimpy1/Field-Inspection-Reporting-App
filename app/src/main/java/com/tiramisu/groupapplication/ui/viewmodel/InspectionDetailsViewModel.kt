@@ -70,7 +70,7 @@ class InspectionDetailsViewModel @Inject constructor(
     fun deleteInspection() = viewModelScope.launch {
         if (deleteInProgress.value) return@launch
         deleteInProgress.value = true
-        runCatching { repo.delete(inspectionId) }
+        runCatching { repo.deleteLocal(inspectionId) }
             .onSuccess { _events.send(InspectionDetailsEvent.Deleted) }
             .onFailure {
                 lastError.value = it

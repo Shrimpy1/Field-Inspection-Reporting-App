@@ -14,6 +14,9 @@ composeBom = "2025.08.01"
 navigationCompose = "2.9.3"
 lifecycleViewmodelCompose = "2.9.3"
 room = "2.7.2"
+datastore = "1.1.7"
+work = "2.10.4"
+hilt-work = "1.3.0"
 
 # Hilt (Dependency Injection)
 hilt = "2.57.1"
@@ -28,7 +31,7 @@ supabaseBom = "3.2.2"
 # Google Play Services
 playServicesLocation = "21.3.0"
 maps = "19.2.0"
-mapsCompose = "6.9.0"
+mapsCompose = "6.10.0"
 
 # Accompanist
 accompanist = "0.37.3"
@@ -63,6 +66,14 @@ androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+
+# Preferences DataStore
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+
+# Work Manager
+androidx-work = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
+androidx-hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hilt-work" }
+androidx-hilt-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "hilt-work" }
 
 # Hilt
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }

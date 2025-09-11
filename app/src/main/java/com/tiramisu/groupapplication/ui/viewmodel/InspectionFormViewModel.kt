@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
@@ -200,7 +201,7 @@ class InspectionFormViewModel @Inject constructor(
                 )
 
                 val inspection = Inspection(
-                    id = data.editingId ?: "",
+                    id = data.editingId ?: UUID.randomUUID().toString(),
                     createdAt = Instant.fromEpochMilliseconds(data.createdAtMillis),
                     type = data.type.trim(),
                     title = data.title.trim(),
@@ -210,13 +211,13 @@ class InspectionFormViewModel @Inject constructor(
                     status = data.status,
                     lat = data.lat,
                     lng = data.lng,
-                    isSynced = false
+                    pendingSync = false
                 )
 
-                val id = repo.upsert(inspection)
-                formData.value = formData.value.copy(saving = false, editingId = id)
+                repo.upsertLocal(inspection)
+                formData.value = formData.value.copy(saving = false, editingId = inspection.id)
                 _uiState.value = InspectionFormState.Success
-                _events.emit(UiEvent.Saved(id))
+                _events.emit(UiEvent.Saved(inspection.id))
             } catch (t: Throwable) {
                 formData.value = formData.value.copy(
                     saving = false,
