@@ -25,9 +25,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.tiramisu.groupapplication.domain.enums.UserRole
-import com.tiramisu.groupapplication.ui.component.BottomBarConfig
 import com.tiramisu.groupapplication.ui.component.NavBar
-import com.tiramisu.groupapplication.ui.viewmodel.AppViewModel
 import com.tiramisu.groupapplication.ui.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
 
@@ -35,7 +33,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun App(
     mainViewModel: MainViewModel = hiltViewModel(),
-    appVm: AppViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
 
@@ -46,14 +43,9 @@ fun App(
     NavHost(
         navController = navController,
         startDestination = Routes.Dashboard.route,
-        route = "root"
     ) {
         // Auth
         composable(Routes.Auth.route) {
-            LaunchedEffect(Unit) {
-                appVm.setBottomBar(BottomBarConfig())
-            }
-
             AuthScreen()
         }
 
