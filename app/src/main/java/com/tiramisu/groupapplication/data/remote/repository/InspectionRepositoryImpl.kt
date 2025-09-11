@@ -119,7 +119,7 @@ class InspectionRepositoryImpl @Inject constructor(
         val snap = query.get().await()
         val dtos = snap.toObjects<InspectionDto>()
         val inspections = dtos.mapIndexed { index, dto ->
-            dto.toInspection(snap.documents[index].id)
+            dto.toInspection(snap.documents[index].id).copy(pendingSync = false)
         }
 
         dao.upsertAll(inspections)
