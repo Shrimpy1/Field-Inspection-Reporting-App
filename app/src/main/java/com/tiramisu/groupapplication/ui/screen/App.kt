@@ -114,7 +114,7 @@ fun App(
 
         // Create
         composable(Routes.InspectionForm.route) {
-            InspectionCreateScreen(
+            InspectionCreateRoute(
                 navController = navController,
             )
         }
@@ -130,7 +130,7 @@ fun App(
             if (inspectionId.isNullOrBlank()) {
                 LaunchedEffect(Unit) { navController.popBackStack() }
             } else {
-                InspectionEditScreen(
+                InspectionEditRoute(
                     inspectionId = inspectionId,
                     navController = navController
                 )
@@ -168,9 +168,4 @@ fun App(
             }
         }
     }
-}
-
-@Composable
-fun InspectionForm(onSaved: () -> Boolean) {
-    TODO("Not yet implemented")
 }

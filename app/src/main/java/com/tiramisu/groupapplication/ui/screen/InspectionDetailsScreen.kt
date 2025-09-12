@@ -7,9 +7,13 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -31,21 +35,27 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import com.tiramisu.groupapplication.domain.enums.InspectionStatus
 import com.tiramisu.groupapplication.domain.model.Inspection
+import com.tiramisu.groupapplication.ui.component.AttachmentImage
 import com.tiramisu.groupapplication.ui.component.NavBar
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionDetailsEvent
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionDetailsState
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionDetailsViewModel
+import com.tiramisu.groupapplication.ui.viewmodel.ui_state.AttachmentUi
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.time.Instant
@@ -145,7 +155,7 @@ fun InspectionDetailsScreen(
                     }
                     IconButton(
                         onClick = onEdit,
-                        enabled = inspection?.id?.isNotBlank() == true
+                        enabled = inspection?.id?.isNotBlank() == true && (inspection.status == InspectionStatus.PENDING_REVIEW || inspection.status == InspectionStatus.NEEDS_ATTENTION)
                     ) {
                         Icon(Icons.Filled.Edit, contentDescription = "Edit")
                     }
@@ -190,7 +200,8 @@ fun InspectionDetailsScreen(
 
                 else -> {
                     InspectionDetailsContent(
-                        inspection = inspection
+                        inspection = inspection,
+                        attachments = state.attachmentItems
                     )
                 }
             }
@@ -201,26 +212,11 @@ fun InspectionDetailsScreen(
 @Composable
 private fun InspectionDetailsContent(
     modifier: Modifier = Modifier,
-    inspection: Inspection
+    inspection: Inspection,
+    attachments: List<AttachmentUi>
 ) {
-    val items = buildList<Pair<String, String>> {
-//        add("Title" to inspection.title)
-        add("Created" to formatInstant(inspection.createdAt))
-        add("Type" to inspection.type)
-        add("Status" to inspection.status.name)
-        add("Score" to inspection.score)
-        add("Outcome" to inspection.outcome)
-        add(
-            "Location" to when {
-                inspection.lat != null && inspection.lng != null -> "${inspection.lat}, ${inspection.lng}"
-                else -> "Not set"
-            }
-        )
-        add("Notes" to inspection.notes)
-    }
-
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -234,8 +230,34 @@ private fun InspectionDetailsContent(
             }
         }
 
+        if (attachments.isNotEmpty()) {
+            item {
+                AttachmentsGallery(
+                    attachments = attachments,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                )
+            }
+        }
 
-        items(items) { (label, value) ->
+        val items = listOf(
+            "Created" to formatInstant(inspection.createdAt),
+            "Type" to inspection.type,
+            "Status" to inspection.status.name,
+            "Score" to inspection.score,
+            "Outcome" to inspection.outcome,
+            "Location" to when {
+                inspection.lat != null && inspection.lng != null -> "${inspection.lat}, ${inspection.lng}"
+                else -> "Not set"
+            },
+            "Notes" to inspection.notes
+        )
+
+        itemsIndexed(
+            items = items,
+            key = { _, pair -> pair.first }
+        ) { index, (label, value) ->
             Column {
                 Text(
                     text = label,
@@ -244,7 +266,66 @@ private fun InspectionDetailsContent(
                 )
                 Text(text = value, style = MaterialTheme.typography.bodyLarge)
             }
-            HorizontalDivider()
+            if (index < items.lastIndex) {
+                HorizontalDivider()
+            }
+        }
+    }
+}
+
+@Composable
+private fun AttachmentsGallery(
+    attachments: List<AttachmentUi>,
+    modifier: Modifier = Modifier,
+    onImageClick: (index: Int) -> Unit = {}
+) {
+    val listState = rememberLazyListState()
+    val config = LocalConfiguration.current
+    val itemWidth =
+        remember(config) { (config.screenWidthDp.dp - 32.dp) } // full width minus horizontal padding
+    val itemHeight = 220.dp
+
+    Box(modifier = modifier) {
+        LazyRow(
+            state = listState,
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(itemHeight)
+        ) {
+            itemsIndexed(attachments) { index, item ->
+                AttachmentImage(
+                    model = item.coilModel,
+                    modifier = Modifier
+                        .width(itemWidth)
+                        .height(itemHeight)
+                    // If you want click-to-preview later:
+                    // .clickable { onImageClick(index) }
+                )
+            }
+        }
+
+        val currentIndex by remember {
+            derivedStateOf {
+                (listState.firstVisibleItemIndex + 1)
+                    .coerceAtMost(attachments.size.coerceAtLeast(1))
+            }
+        }
+
+        Surface(
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+            tonalElevation = 2.dp,
+            shape = MaterialTheme.shapes.small,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "$currentIndex/${attachments.size}",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            )
         }
     }
 }

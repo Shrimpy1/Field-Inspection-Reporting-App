@@ -26,7 +26,8 @@ hiltNavigationCompose = "1.2.0"
 firebaseBom = "34.2.0"
 
 # Supabase
-supabaseBom = "3.2.2"
+supabaseBom = "3.2.3"
+ktor = "3.3.0"
 
 # Google Play Services
 playServicesLocation = "21.3.0"
@@ -100,6 +101,7 @@ firebase-auth = { module = "com.google.firebase:firebase-auth" }
 # Supabase
 supabase-bom = { group = "io.github.jan-tennert.supabase", name = "bom", version.ref = "supabaseBom" }
 storage-kt = { group = "io.github.jan-tennert.supabase", name = "storage-kt", version.ref = "supabaseBom" }
+io-ktor = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }

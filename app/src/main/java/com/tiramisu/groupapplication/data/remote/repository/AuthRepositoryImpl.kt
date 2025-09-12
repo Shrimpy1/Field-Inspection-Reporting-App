@@ -21,6 +21,7 @@ class AuthRepositoryImpl @Inject constructor(
 ) : AuthRepository {
 
     override val currentUser: Flow<FirebaseUser?> = callbackFlow {
+        trySend(auth.currentUser)
         val listener = FirebaseAuth.AuthStateListener {
             trySend(it.currentUser)
         }
@@ -65,4 +66,3 @@ class AuthRepositoryImpl @Inject constructor(
         auth.signOut()
     }
 }
-

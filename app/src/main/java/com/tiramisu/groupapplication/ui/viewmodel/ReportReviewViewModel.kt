@@ -69,8 +69,15 @@ class ReportReviewViewModel @Inject constructor(
             val currentUser = authRepo.currentUser.first()
             val originalInspection = _state.value.inspection
 
-            if (currentUser == null || originalInspection == null) {
-                _state.value = _state.value.copy(error = "User or inspection not found.", isSaving = false)
+            if (currentUser == null) {
+                _state.value =
+                    _state.value.copy(error = "User is not logged in.", isSaving = false)
+                return@launch
+            }
+
+            if (originalInspection == null) {
+                _state.value =
+                    _state.value.copy(error = "User or inspection not found.", isSaving = false)
                 return@launch
             }
 
@@ -78,11 +85,11 @@ class ReportReviewViewModel @Inject constructor(
                 status = newStatus,
                 reviewNotes = notes,
                 reviewedBy = currentUser.email,
-                reviewedAt = Clock.System.now()
+                reviewedAt = Clock.System.now(),
             )
 
             try {
-                inspectionRepo.updateInspection(updatedInspection)
+                inspectionRepo.upsertLocal(updatedInspection)
                 _state.value = _state.value.copy(isSaving = false, isFinished = true)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(isSaving = false, error = e.message)

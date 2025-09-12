@@ -9,10 +9,10 @@ annotation class LocalDB
 annotation class InspectionCollection
 
 @Qualifier
-annotation class SupabaseClientQ
-
-@Qualifier
 annotation class IoDispatcher
 
 @Qualifier
 annotation class ApplicationScope
+
+@Qualifier
+annotation class AttachmentBucket

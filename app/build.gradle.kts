@@ -126,6 +126,7 @@ dependencies {
     // Supabase
     implementation(platform(libs.supabase.bom))
     implementation(libs.storage.kt)
+    implementation(libs.io.ktor)
 
     // Location & Images
     implementation(libs.play.services.location)

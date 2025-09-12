@@ -15,7 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -45,7 +45,9 @@ fun ReportReviewScreen(
 
     Scaffold { padding ->
         if (state.inspection == null) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)) {
                 CircularProgressIndicator()
             }
         } else {
@@ -59,7 +61,7 @@ fun ReportReviewScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text("Review Inspection", style = MaterialTheme.typography.headlineSmall)
-                Divider()
+                HorizontalDivider()
 
                 InspectionDetailItem("Title:", inspection.title)
                 InspectionDetailItem("Type:", inspection.type)
@@ -70,13 +72,15 @@ fun ReportReviewScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("Supervisor Actions", style = MaterialTheme.typography.titleLarge)
-                Divider()
+                HorizontalDivider()
 
                 OutlinedTextField(
                     value = state.reviewNotes,
                     onValueChange = viewModel::onReviewNotesChanged,
                     label = { Text("Review Notes (Required for rejection)") },
-                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
                     isError = state.error != null
                 )
                 if (state.error != null) {
@@ -87,7 +91,11 @@ fun ReportReviewScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    Button(onClick = viewModel::rejectReport, enabled = !state.isSaving, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                    Button(
+                        onClick = viewModel::rejectReport,
+                        enabled = !state.isSaving,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
                         Text("Reject")
                     }
                     Button(onClick = viewModel::approveReport, enabled = !state.isSaving) {

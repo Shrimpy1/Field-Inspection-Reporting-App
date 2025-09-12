@@ -27,7 +27,6 @@ class DashboardViewModel @Inject constructor(
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardState())
 
     init {
-        // Use the corrected function name
         repo.startRealtimeSync()
     }
 }

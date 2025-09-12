@@ -4,7 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tiramisu.groupapplication.domain.model.Inspection
+import com.tiramisu.groupapplication.domain.repository.AttachmentRepository
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
+import com.tiramisu.groupapplication.ui.viewmodel.ui_state.AttachmentUi
+import com.tiramisu.groupapplication.ui.viewmodel.ui_state.toUiList
+import com.tiramisu.groupapplication.util.AttachmentLinkResolver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
@@ -12,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -19,6 +24,7 @@ import javax.inject.Inject
 
 data class InspectionDetailsState(
     val inspection: Inspection? = null,
+    val attachmentItems: List<AttachmentUi> = emptyList(),
     val isLoading: Boolean = true,
     val isSyncing: Boolean = false,
     val deleteInProgress: Boolean = false,
@@ -33,9 +39,10 @@ sealed interface InspectionDetailsEvent {
 @HiltViewModel
 class InspectionDetailsViewModel @Inject constructor(
     private val repo: InspectionRepository,
-    savedStateHandle: SavedStateHandle
+    private val attachmentRepo: AttachmentRepository,
+    savedStateHandle: SavedStateHandle,
+    private val linkResolver: AttachmentLinkResolver
 ) : ViewModel() {
-
     private val inspectionId: String = checkNotNull(savedStateHandle["inspectionId"]) {
         "inspectionId is required"
     }
@@ -46,12 +53,16 @@ class InspectionDetailsViewModel @Inject constructor(
     val uiState: StateFlow<InspectionDetailsState> =
         combine(
             repo.getReportById(inspectionId),
+            attachmentRepo.getAttachments(inspectionId)
+                .onStart { attachmentRepo.hydrateFromRemoteIfEmpty(inspectionId) }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList()),
             repo.syncState,
             deleteInProgress,
             lastError
-        ) { inspection, sync, deleting, error ->
+        ) { inspection, attachments, sync, deleting, error ->
             InspectionDetailsState(
                 inspection = inspection,
+                attachmentItems = toUiList(attachments, linkResolver),
                 isLoading = (inspection == null && error == null),
                 isSyncing = sync.syncing,
                 deleteInProgress = deleting,
@@ -66,6 +77,10 @@ class InspectionDetailsViewModel @Inject constructor(
     private val _events =
         Channel<InspectionDetailsEvent>(capacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val events = _events.receiveAsFlow()
+
+    init {
+        viewModelScope.launch { attachmentRepo.hydrateFromRemoteIfEmpty(inspectionId) }
+    }
 
     fun deleteInspection() = viewModelScope.launch {
         if (deleteInProgress.value) return@launch
