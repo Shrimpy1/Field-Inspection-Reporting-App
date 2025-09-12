@@ -1,6 +1,5 @@
 package com.tiramisu.groupapplication.domain.repository
 
-import androidx.datastore.preferences.core.Preferences
 import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.domain.model.SyncState
 import kotlinx.coroutines.flow.Flow
@@ -26,6 +25,8 @@ interface InspectionRepository {
      */
     fun startRealtimeSync()
 
+    fun stopRealtimeSync()
+
     /**
      * Triggers a one-time manual sync to fetch all data from Firestore.
      */
@@ -42,13 +43,8 @@ interface InspectionRepository {
      */
     suspend fun delete(id: String): Void?
 
-    /**
-     * Updates an existing inspection, typically used for supervisor reviews.
-     */
-    suspend fun updateInspection(inspection: Inspection)
-
     suspend fun upsertLocal(inspection: Inspection): Any
     suspend fun deleteLocal(id: String): Any
     suspend fun pushPendingChanges()
-    suspend fun pullRemoteChanges(): Preferences
+    suspend fun pullRemoteChanges()
 }
