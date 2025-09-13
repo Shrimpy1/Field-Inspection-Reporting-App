@@ -69,6 +69,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -182,7 +183,8 @@ fun InspectionForm(
                 actions = {
                     Button(
                         onClick = { viewModel.save() },
-                        enabled = !formData.saving
+                        enabled = !formData.saving,
+                        modifier = Modifier.testTag("save_button")
                     ) {
                         Text(if (formData.saving) "Saving..." else "Save")
                     }
@@ -252,7 +254,7 @@ private fun FormContent(
                 value = formData.type,
                 onValueChange = onSetType,
                 label = { Text("Type") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("type_input"),
                 singleLine = true
             )
         }
@@ -262,7 +264,7 @@ private fun FormContent(
                 value = formData.title,
                 onValueChange = onSetTitle,
                 label = { Text("Title") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("title_input"),
                 singleLine = true
             )
         }
@@ -272,7 +274,7 @@ private fun FormContent(
                 value = formData.notes,
                 onValueChange = onSetNotes,
                 label = { Text("Notes") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("notes_input"),
                 singleLine = false,
                 minLines = 3
             )
@@ -283,7 +285,7 @@ private fun FormContent(
                 value = formData.score,
                 onValueChange = onSetScore,
                 label = { Text("Score") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("score_input"),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
@@ -294,7 +296,7 @@ private fun FormContent(
                 value = formData.outcome,
                 onValueChange = onSetOutcome,
                 label = { Text("Outcome") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("outcome_input"),
                 singleLine = true
             )
         }
