@@ -88,7 +88,8 @@ fun App(
                         })
 
                         UserRole.ADMIN.name -> AdminDashboardScreen(
-                            onNavigateToLogs = { navController.navigate(Routes.Logs.route) }
+                            onNavigateToLogs = { navController.navigate(Routes.Logs.route) },
+                            onNavigateToUserList = { navController.navigate(Routes.UserList.route) }
                         )
                     }
                 }
@@ -165,6 +166,12 @@ fun App(
             )
         }
 
+        // User List
+        composable(Routes.UserList.route) {
+            UserListScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
     }
 
     ConnectivityToasts(viewModel = appViewModel)
