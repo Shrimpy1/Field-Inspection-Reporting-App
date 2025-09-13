@@ -1,21 +1,32 @@
 package com.tiramisu.groupapplication.ui.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -28,6 +39,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tiramisu.groupapplication.domain.enums.UserRole
@@ -47,7 +60,7 @@ fun UserListScreen(
             TopAppBar(
                 title = { Text("Manage Users") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    androidx.compose.material3.IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
@@ -59,7 +72,7 @@ fun UserListScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(users, key = { it.uid }) { user ->
                 UserRow(
@@ -69,6 +82,7 @@ fun UserListScreen(
                     }
                 )
             }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
         }
     }
 }
@@ -81,50 +95,93 @@ private fun UserRow(
     val currentRole = runCatching { UserRole.valueOf(user.role) }.getOrDefault(UserRole.INSPECTOR)
     var menuExpanded by remember(user.uid) { mutableStateOf(false) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.elevatedCardColors()
     ) {
-        Text(
-            text = user.email.ifBlank { user.uid },
-            style = MaterialTheme.typography.bodyLarge
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        Text(
-            text = "Role: ${currentRole.name}",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(end = 8.dp)
-        )
-
-        IconButton(
-            onClick = { menuExpanded = true },
-            modifier = Modifier.weight(1f)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Edit,
-                contentDescription = "Change role"
-            )
-        }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Avatar with initial
+                val avatarBg = MaterialTheme.colorScheme.primaryContainer
+                val avatarText = MaterialTheme.colorScheme.onPrimaryContainer
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(avatarBg),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val initial = user.email.firstOrNull()?.uppercaseChar()?.toString()
+                        ?: user.uid.firstOrNull()?.uppercaseChar()?.toString()
+                        ?: "?"
+                    Text(
+                        text = initial,
+                        color = avatarText,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
 
-        DropdownMenu(
-            expanded = menuExpanded,
-            onDismissRequest = { menuExpanded = false }
-        ) {
-            UserRole.entries.forEach { role ->
-                DropdownMenuItem(
-                    text = { Text(role.name) },
-                    onClick = {
-                        menuExpanded = false
-                        if (role != currentRole) {
-                            onChangeRole(role)
-                        }
-                    }
+                Text(
+                    text = user.email.ifBlank { user.uid },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
                 )
+            }
+
+            AssistChip(
+                onClick = { /* no-op: informational */ },
+                label = { Text("Role: ${currentRole.name}") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = null
+                    )
+                }
+            )
+
+            Spacer(modifier = Modifier.padding(8.dp))
+
+            // Prominent "Change Role" button with anchored menu
+            Box(
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                FilledTonalButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = null
+                    )
+                    Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                    Text("Change role")
+                }
+
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    UserRole.entries.forEach { role ->
+                        DropdownMenuItem(
+                            text = { Text(role.name) },
+                            onClick = {
+                                menuExpanded = false
+                                if (role != currentRole) {
+                                    onChangeRole(role)
+                                }
+                            }
+                        )
+                    }
+                }
             }
         }
     }
