@@ -24,6 +24,9 @@ interface InspectionDao {
     @Query("DELETE FROM inspection_reports WHERE id = :id")
     suspend fun delete(id: String)
 
+    @Query("UPDATE inspection_reports SET deletedAt = :deletedAt, pendingSync = 1 WHERE id = :id")
+    suspend fun softDelete(id: String, deletedAt: Long)
+
     @Query("DELETE FROM inspection_reports WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<String>)
 

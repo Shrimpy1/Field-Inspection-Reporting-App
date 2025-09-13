@@ -26,5 +26,7 @@ data class Inspection @OptIn(ExperimentalTime::class) constructor(
     val pendingSync: Boolean = false,
     val reviewNotes: String? = null,
     val reviewedBy: String? = null,
-    val reviewedAt: Instant? = null
+    val reviewedAt: Instant? = null,
+    val createdBy: String? = null,
+    val deletedAt: String? = null,
 )

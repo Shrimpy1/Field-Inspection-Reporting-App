@@ -9,6 +9,7 @@ import com.tiramisu.groupapplication.domain.enums.InspectionStatus
 import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.domain.model.InspectionAttachment
 import com.tiramisu.groupapplication.domain.repository.AttachmentRepository
+import com.tiramisu.groupapplication.domain.repository.AuthRepository
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
 import com.tiramisu.groupapplication.domain.repository.LogRepository
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.AttachmentUi
@@ -16,22 +17,17 @@ import com.tiramisu.groupapplication.ui.viewmodel.ui_state.toUi
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.toUiList
 import com.tiramisu.groupapplication.util.AttachmentLinkResolver
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 sealed class InspectionFormState {
     object Loading : InspectionFormState()
@@ -42,13 +38,11 @@ sealed class InspectionFormState {
 
 data class InspectionFormData(
     val isEditing: Boolean = false,
-    val createdAtMillis: Long = System.currentTimeMillis(),
     val type: String = "",
     val title: String = "",
     val notes: String = "",
     val score: String = "",
     val outcome: String = "",
-    val status: InspectionStatus = InspectionStatus.PENDING_REVIEW,
     val saving: Boolean = false,
     val errors: InspectionFormError = InspectionFormError(),
     val generalError: String? = null,
@@ -75,7 +69,8 @@ class InspectionFormViewModel @Inject constructor(
     private val attachmentRepo: AttachmentRepository,
     private val logRepo: LogRepository,
     savedStateHandle: SavedStateHandle,
-    private val linkResolver: AttachmentLinkResolver
+    private val linkResolver: AttachmentLinkResolver,
+    private val auth: AuthRepository
 ) : ViewModel() {
     private companion object {
         const val KEY_DRAFT_ID = "draftInspectionId"
@@ -84,10 +79,12 @@ class InspectionFormViewModel @Inject constructor(
     private val draftId: String =
         savedStateHandle.get<String>(KEY_DRAFT_ID)
             ?: UUID.randomUUID().toString().also { savedStateHandle[KEY_DRAFT_ID] = it }
+    private var userId: String? = null
 
     private val _uiState = MutableStateFlow<InspectionFormState>(InspectionFormState.Idle)
     val uiState: StateFlow<InspectionFormState> = _uiState.asStateFlow()
     val formData = MutableStateFlow(InspectionFormData(editingId = draftId))
+    private var originalInspection: Inspection? = null
 
     private var originalAttachmentIds: Set<String> = emptySet()
 
@@ -99,13 +96,15 @@ class InspectionFormViewModel @Inject constructor(
     private val _events = MutableSharedFlow<UiEvent>(replay = 0, extraBufferCapacity = 1)
     val events: SharedFlow<UiEvent> = _events.asSharedFlow()
 
-    // ----- Attachments stream for current inspection id -----
-
-    /** Emits the current editingId (non-null), used to scope attachment flows. */
-    private val editingIdFlow: Flow<String> =
-        formData.map { it.editingId }.filterNotNull().distinctUntilChanged()
-
     // ----- Load/Edit -----
+    init {
+        viewModelScope.launch {
+            userId = auth.currentUser.firstOrNull()?.uid
+            if (userId == null) {
+                _uiState.value = InspectionFormState.Error("User is not logged in")
+            }
+        }
+    }
 
     fun loadForEdit(inspectionId: String) = viewModelScope.launch {
         _uiState.value = InspectionFormState.Loading
@@ -113,6 +112,7 @@ class InspectionFormViewModel @Inject constructor(
         if (inspection == null) {
             _uiState.value = InspectionFormState.Error("Failed to get Inspection")
         } else {
+            originalInspection = inspection
             runCatching { attachmentRepo.hydrateFromRemoteIfEmpty(inspectionId) }
             val current = attachmentRepo.getAttachments(inspectionId).firstOrNull().orEmpty()
             originalAttachmentIds = current.map { it.id }.toSet()
@@ -128,24 +128,14 @@ class InspectionFormViewModel @Inject constructor(
         val cur = formData.value
         formData.value = cur.copy(
             isEditing = true,
-            createdAtMillis = inspection.createdAt.toEpochMilliseconds(),
             type = inspection.type,
             title = inspection.title,
             notes = inspection.notes,
             score = inspection.score,
             outcome = inspection.outcome,
-            status = inspection.status,
             lat = inspection.lat,
             lng = inspection.lng,
             editingId = inspection.id,
-            generalError = null
-        )
-    }
-
-    fun setDateTime(epochMillis: Long) {
-        val cur = formData.value
-        formData.value = cur.copy(
-            createdAtMillis = epochMillis,
             generalError = null
         )
     }
@@ -191,14 +181,6 @@ class InspectionFormViewModel @Inject constructor(
         formData.value = cur.copy(
             outcome = outcome,
             errors = cur.errors.copy(outcome = validateOutcome(outcome)),
-            generalError = null
-        )
-    }
-
-    fun setStatus(status: InspectionStatus) {
-        val cur = formData.value
-        formData.value = cur.copy(
-            status = status,
             generalError = null
         )
     }
@@ -272,19 +254,7 @@ class InspectionFormViewModel @Inject constructor(
                     generalError = null
                 )
 
-                val inspection = Inspection(
-                    id = data.editingId!!,
-                    createdAt = Instant.fromEpochMilliseconds(data.createdAtMillis),
-                    type = data.type.trim(),
-                    title = data.title.trim(),
-                    notes = data.notes.trim(),
-                    score = data.score.trim(),
-                    outcome = data.outcome.trim(),
-                    status = InspectionStatus.PENDING_REVIEW,
-                    lat = data.lat,
-                    lng = data.lng,
-                    pendingSync = false
-                )
+                val inspection = buildInspectionForSave(data)
 
                 repo.upsertLocal(inspection)
 
@@ -300,7 +270,7 @@ class InspectionFormViewModel @Inject constructor(
                 toAdd.forEach { att ->
                     // we only stored localUri in form; repo will copy & upload later
                     val local = att.raw.localUri ?: return@forEach
-                    runCatching { attachmentRepo.addAttachment(data.editingId, local.toUri()) }
+                    runCatching { attachmentRepo.addAttachment(inspection.id, local.toUri()) }
                         .onFailure { setGeneralError(it.message) }
                 }
 
@@ -326,30 +296,7 @@ class InspectionFormViewModel @Inject constructor(
         }
     }
 
-    // ----- Attachments actions -----
-
-    /** Picked URIs from system picker/camera go here. */
-//    fun addAttachments(picked: List<Uri>) = viewModelScope.launch {
-//        val id = formData.value.editingId!!
-//        picked.forEach { uri ->
-//            runCatching { attachmentRepo.addAttachment(id, uri) }
-//                .onFailure { setGeneralError(it.message) }
-//        }
-//    }
-//
-//    fun removeAttachment(attachmentId: String) = viewModelScope.launch {
-//        runCatching { attachmentRepo.deleteAttachment(attachmentId) }
-//            .onFailure { setGeneralError(it.message) }
-//    }
-//
-//    fun retryAttachment(attachmentId: String) = viewModelScope.launch {
-//        runCatching { attachmentRepo.retryUpload(attachmentId) }
-//            .onFailure { setGeneralError(it.message) }
-//    }
-
-
     // ----- Validation helpers -----
-
     private fun validateType(type: String): String? =
         if (type.isBlank()) "Type is required" else null
 
@@ -366,4 +313,37 @@ class InspectionFormViewModel @Inject constructor(
 
     private fun validateOutcome(outcome: String): String? =
         if (outcome.isBlank()) "Outcome is required" else null
+
+    // Helper
+    @OptIn(ExperimentalTime::class)
+    private fun buildInspectionForSave(data: InspectionFormData): Inspection {
+        // Editing: start from original and override only the edited fields.
+        originalInspection?.let { orig ->
+            return orig.copy(
+                type = data.type.trim(),
+                title = data.title.trim(),
+                notes = data.notes.trim(),
+                score = data.score.trim(),
+                outcome = data.outcome.trim(),
+                lat = data.lat,
+                lng = data.lng,
+                pendingSync = true
+            )
+        }
+
+        // Creating new: construct the full object
+        return Inspection(
+            id = data.editingId ?: draftId,
+            type = data.type.trim(),
+            title = data.title.trim(),
+            notes = data.notes.trim(),
+            score = data.score.trim(),
+            outcome = data.outcome.trim(),
+            status = InspectionStatus.PENDING_REVIEW,
+            lat = data.lat,
+            lng = data.lng,
+            pendingSync = true,
+            createdBy = userId
+        )
+    }
 }

@@ -47,7 +47,7 @@ class InspectionRepositoryImpl @Inject constructor(
     private val work: WorkManager,
     @InspectionCollection private val inspectionCol: CollectionReference,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-    @ApplicationContext private val context: Context,
+    @ApplicationContext private val context: Context
 ) : InspectionRepository {
     private val _syncState = MutableStateFlow(SyncState())
     override val syncState: Flow<SyncState> = _syncState.asStateFlow()
@@ -74,18 +74,19 @@ class InspectionRepositoryImpl @Inject constructor(
         inspectionCol.document(id).delete().await()
     }
 
-    override suspend fun upsertLocal(inspection: Inspection) = withContext(ioDispatcher) {
-        inspectionDao.upsert(
-            inspection.copy(
-                updatedAt = now(),
-                pendingSync = true
+    override suspend fun upsertLocal(inspection: Inspection) =
+        withContext(ioDispatcher) {
+            inspectionDao.upsert(
+                inspection.copy(
+                    updatedAt = now(),
+                    pendingSync = true
+                )
             )
-        )
-        sync()
-    }
+            sync()
+        }
 
     override suspend fun deleteLocal(id: String) = withContext(ioDispatcher) {
-        inspectionDao.delete(id)
+        inspectionDao.softDelete(id, nowEpochMillis())
         sync()
     }
 
@@ -107,7 +108,11 @@ class InspectionRepositoryImpl @Inject constructor(
         val batch = inspectionCol.firestore.batch()
         for (it in pending) {
             val doc = inspectionCol.document(it.id)
-            batch.set(doc, it.toInspectionDto(), SetOptions.merge())
+            if (it.deletedAt != null) {
+                batch.delete(doc)
+            } else {
+                batch.set(doc, it.toInspectionDto(), SetOptions.merge())
+            }
             pushedIds += doc.id.ifBlank { it.id }
         }
         batch.commit().await()
@@ -178,6 +183,7 @@ class InspectionRepositoryImpl @Inject constructor(
     }
 
     private fun now() = Clock.System.now()
+    private fun nowEpochMillis() = now().toEpochMilliseconds()
 
     suspend fun resetInspectionWatermark() = withContext(ioDispatcher) {
         syncMetaDao.upsert(SyncMeta(key = metaKey(), lastEpoch = 0L))

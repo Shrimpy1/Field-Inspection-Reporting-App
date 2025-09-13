@@ -42,7 +42,6 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -89,7 +88,6 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 
 @SuppressLint("DefaultLocale")
@@ -107,17 +105,6 @@ fun InspectionForm(
     val formData by viewModel.formData.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-
-    var showDateTimeDialog by remember { mutableStateOf(false) }
-    val dateTimeFormatter = remember {
-        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-    }
-    val zone = remember { ZoneId.systemDefault() }
-
-    val createdText = remember(formData.createdAtMillis) {
-        val instant = Instant.ofEpochMilli(formData.createdAtMillis)
-        dateTimeFormatter.format(instant.atZone(zone).toLocalDateTime())
-    }
 
     val fusedLocationClient = remember {
         LocationServices.getFusedLocationProviderClient(context)
@@ -202,23 +189,9 @@ fun InspectionForm(
             onSetNotes = viewModel::setNotes,
             onSetScore = viewModel::setScore,
             onSetOutcome = viewModel::setOutcome,
-            createdText = createdText,
-            onShowDateTimeDialog = { showDateTimeDialog = true },
-            onSave = { viewModel.save() },
             attachments = formData.attachments,
             onAddImages = { uris -> viewModel.addAttachments(uris) },
             onDeleteAttachment = { id -> viewModel.removeAttachment(id) }
-        )
-    }
-
-    if (showDateTimeDialog) {
-        DateTimePickerDialog(
-            initialEpochMillis = formData.createdAtMillis,
-            onConfirm = {
-                viewModel.setDateTime(it)
-                showDateTimeDialog = false
-            },
-            onDismiss = { showDateTimeDialog = false }
         )
     }
 }
@@ -234,9 +207,6 @@ private fun FormContent(
     onSetNotes: (String) -> Unit,
     onSetScore: (String) -> Unit,
     onSetOutcome: (String) -> Unit,
-    createdText: String = "",
-    onShowDateTimeDialog: () -> Unit,
-    onSave: () -> Unit,
     attachments: List<AttachmentUi>,
     onAddImages: (List<Uri>) -> Unit,
     onDeleteAttachment: (String) -> Unit
@@ -300,21 +270,6 @@ private fun FormContent(
         }
 
         item {
-            OutlinedTextField(
-                value = createdText,
-                onValueChange = {},
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Created At") },
-                readOnly = true,
-                trailingIcon = {
-                    IconButton(onClick = onShowDateTimeDialog) {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = false)
-                    }
-                }
-            )
-        }
-
-        item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -365,20 +320,6 @@ private fun FormContent(
                 onDeleteAttachment = onDeleteAttachment
             )
         }
-
-//        item {
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.Center
-//            ) {
-//                Button(
-//                    onClick = onSave,
-//                    enabled = !formData.saving
-//                ) {
-//                    Text(if (formData.saving) "Saving..." else "Save")
-//                }
-//            }
-//        }
     }
 }
 
