@@ -19,4 +19,6 @@ sealed class Routes(val route: String) {
     object InspectionEdit : Routes("inspection/{inspectionId}/edit") {
         fun createRoute(inspectionId: String) = "inspection/$inspectionId/edit"
     }
+
+    object Misc : Routes("misc")
 }

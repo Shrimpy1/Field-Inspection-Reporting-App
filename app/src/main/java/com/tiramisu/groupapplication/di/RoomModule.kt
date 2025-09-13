@@ -6,6 +6,7 @@ import com.tiramisu.groupapplication.BuildConfig
 import com.tiramisu.groupapplication.data.local.AppDatabase
 import com.tiramisu.groupapplication.data.local.InspectionAttachmentDao
 import com.tiramisu.groupapplication.data.local.InspectionDao
+import com.tiramisu.groupapplication.data.local.LogDao
 import com.tiramisu.groupapplication.data.local.SyncMetaDao
 import dagger.Module
 import dagger.Provides
@@ -46,5 +47,10 @@ object RoomModule {
     @Provides
     fun provideSyncMetaDao(appDatabase: AppDatabase): SyncMetaDao {
         return appDatabase.syncMetaDao()
+    }
+
+    @Provides
+    fun provideLogDao(appDatabase: AppDatabase): LogDao {
+        return appDatabase.logDao()
     }
 }

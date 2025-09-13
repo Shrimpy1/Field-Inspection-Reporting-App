@@ -2,8 +2,6 @@ package com.tiramisu.groupapplication.data.remote.repository
 
 import android.content.Context
 import android.content.Intent
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.net.Uri
 import android.util.Log
 import androidx.core.net.toUri
@@ -19,6 +17,7 @@ import com.tiramisu.groupapplication.di.IoDispatcher
 import com.tiramisu.groupapplication.domain.enums.AttachmentStatus
 import com.tiramisu.groupapplication.domain.model.InspectionAttachment
 import com.tiramisu.groupapplication.domain.repository.AttachmentRepository
+import com.tiramisu.groupapplication.util.ext.isOnline
 import com.tiramisu.groupapplication.util.ext.queryMime
 import com.tiramisu.groupapplication.util.ext.querySize
 import com.tiramisu.groupapplication.util.extensionForMime
@@ -66,7 +65,7 @@ class AttachmentRepositoryImpl @Inject constructor(
             )
         )
 
-        if (isOnline()) {
+        if (context.isOnline()) {
             runCatching { uploadOne(id) }.onFailure {
                 scheduleUploadWorker(id)
             }
@@ -99,7 +98,7 @@ class AttachmentRepositoryImpl @Inject constructor(
     override suspend fun retryUpload(attachmentId: String) = withContext(ioDispatcher) {
         val row = attachmentDao.getById(attachmentId) ?: return@withContext
         attachmentDao.updateStatus(row.id, AttachmentStatus.PENDING_UPLOAD)
-        if (isOnline()) {
+        if (context.isOnline()) {
             runCatching { uploadOne(attachmentId) }.onFailure { scheduleUploadWorker(attachmentId) }
         } else {
             scheduleUploadWorker(attachmentId)
@@ -120,7 +119,7 @@ class AttachmentRepositoryImpl @Inject constructor(
 
         // Has a remote object → mark and schedule remote delete
         attachmentDao.updateStatus(row.id, AttachmentStatus.DELETE_PENDING)
-        if (isOnline()) {
+        if (context.isOnline()) {
             runCatching { deleteOneNow(row.id) }.onFailure { scheduleDeleteWorker(row.id) }
         } else {
             scheduleDeleteWorker(row.id)
@@ -184,13 +183,6 @@ class AttachmentRepositoryImpl @Inject constructor(
             .build()
 
         work.enqueueUniqueWork("delete-attachment-$attachmentId", ExistingWorkPolicy.REPLACE, req)
-    }
-
-    private fun isOnline(): Boolean {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val nw = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(nw) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     private fun persistOrCopy(uri: Uri): Uri {

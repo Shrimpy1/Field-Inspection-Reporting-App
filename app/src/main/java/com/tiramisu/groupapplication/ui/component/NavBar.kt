@@ -2,6 +2,7 @@ package com.tiramisu.groupapplication.ui.component
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -22,26 +23,24 @@ enum class NavBarDestinations(
     val icon: ImageVector,
     val contentDescription: String
 ) {
-    DASHBOARD(Routes.Dashboard.route, "Dashboard", Icons.Default.Home, "Dashboard")
+    DASHBOARD(Routes.Dashboard.route, "Dashboard", Icons.Default.Home, "Dashboard"),
+    MISC(Routes.Misc.route, "Misc", Icons.Default.Settings, "Misc")
 }
 
 @Composable
 fun NavBar(navController: NavHostController) {
-    val items = NavBarDestinations.entries
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        val navBackStackEntry by navController.currentBackStackEntryAsState()
+        val currentDestination = navBackStackEntry?.destination
 
-    NavigationBar {
-        items.forEachIndexed { index, destination ->
+        NavBarDestinations.entries.forEach { destination ->
             NavigationBarItem(
-                selected = currentDestination
-                    ?.hierarchy
-                    ?.any { it.route == destination.route } == true,
+                selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true,
                 onClick = {
-                    navController.navigate(route = destination.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
-                        }
+                    navController.navigate(destination.route) {
+                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                         launchSingleTop = true
                         restoreState = true
                     }
@@ -52,12 +51,7 @@ fun NavBar(navController: NavHostController) {
                         contentDescription = destination.contentDescription
                     )
                 },
-                label = {
-                    Text(
-                        destination.label,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                },
+                label = { Text(destination.label) }
             )
         }
     }

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.domain.repository.AttachmentRepository
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
+import com.tiramisu.groupapplication.domain.repository.LogRepository
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.AttachmentUi
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.toUiList
 import com.tiramisu.groupapplication.util.AttachmentLinkResolver
@@ -40,6 +41,7 @@ sealed interface InspectionDetailsEvent {
 class InspectionDetailsViewModel @Inject constructor(
     private val repo: InspectionRepository,
     private val attachmentRepo: AttachmentRepository,
+    private val logRepo: LogRepository,
     savedStateHandle: SavedStateHandle,
     private val linkResolver: AttachmentLinkResolver
 ) : ViewModel() {
@@ -86,7 +88,10 @@ class InspectionDetailsViewModel @Inject constructor(
         if (deleteInProgress.value) return@launch
         deleteInProgress.value = true
         runCatching { repo.deleteLocal(inspectionId) }
-            .onSuccess { _events.send(InspectionDetailsEvent.Deleted) }
+            .onSuccess {
+                _events.send(InspectionDetailsEvent.Deleted)
+                runCatching { logRepo.log(inspectionId, "DELETED") }
+            }
             .onFailure {
                 lastError.value = it
                 _events.send(

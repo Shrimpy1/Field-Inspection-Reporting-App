@@ -1,6 +1,7 @@
 package com.tiramisu.groupapplication.ui.viewmodel
 
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,26 +10,23 @@ import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.domain.model.InspectionAttachment
 import com.tiramisu.groupapplication.domain.repository.AttachmentRepository
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
+import com.tiramisu.groupapplication.domain.repository.LogRepository
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.AttachmentUi
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.toUi
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.toUiList
 import com.tiramisu.groupapplication.util.AttachmentLinkResolver
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
@@ -43,6 +41,7 @@ sealed class InspectionFormState {
 }
 
 data class InspectionFormData(
+    val isEditing: Boolean = false,
     val createdAtMillis: Long = System.currentTimeMillis(),
     val type: String = "",
     val title: String = "",
@@ -74,6 +73,7 @@ data class InspectionFormError(
 class InspectionFormViewModel @Inject constructor(
     private val repo: InspectionRepository,
     private val attachmentRepo: AttachmentRepository,
+    private val logRepo: LogRepository,
     savedStateHandle: SavedStateHandle,
     private val linkResolver: AttachmentLinkResolver
 ) : ViewModel() {
@@ -105,13 +105,6 @@ class InspectionFormViewModel @Inject constructor(
     private val editingIdFlow: Flow<String> =
         formData.map { it.editingId }.filterNotNull().distinctUntilChanged()
 
-    /** UI collects this to render images (AsyncImage can take local Uri or public URL later). */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val attachments: StateFlow<List<InspectionAttachment>> =
-        editingIdFlow
-            .flatMapLatest { id -> attachmentRepo.getAttachments(id) }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
     // ----- Load/Edit -----
 
     fun loadForEdit(inspectionId: String) = viewModelScope.launch {
@@ -134,6 +127,7 @@ class InspectionFormViewModel @Inject constructor(
     fun initForEdit(inspection: Inspection) {
         val cur = formData.value
         formData.value = cur.copy(
+            isEditing = true,
             createdAtMillis = inspection.createdAt.toEpochMilliseconds(),
             type = inspection.type,
             title = inspection.title,
@@ -294,6 +288,9 @@ class InspectionFormViewModel @Inject constructor(
 
                 repo.upsertLocal(inspection)
 
+                val logTag = if (formData.value.isEditing) "EDITED" else "ADDED"
+                logRepo.log(inspection.id, logTag)
+
                 val draft = formData.value.attachments
                 val draftIds = draft.map { it.id }.toSet()
 
@@ -303,7 +300,7 @@ class InspectionFormViewModel @Inject constructor(
                 toAdd.forEach { att ->
                     // we only stored localUri in form; repo will copy & upload later
                     val local = att.raw.localUri ?: return@forEach
-                    runCatching { attachmentRepo.addAttachment(data.editingId, Uri.parse(local)) }
+                    runCatching { attachmentRepo.addAttachment(data.editingId, local.toUri()) }
                         .onFailure { setGeneralError(it.message) }
                 }
 

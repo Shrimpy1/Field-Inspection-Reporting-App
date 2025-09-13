@@ -1,8 +1,6 @@
 package com.tiramisu.groupapplication.data.remote.repository
 
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.util.Log
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -26,6 +24,7 @@ import com.tiramisu.groupapplication.di.IoDispatcher
 import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.domain.model.SyncState
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
+import com.tiramisu.groupapplication.util.ext.isOnline
 import com.tiramisu.groupapplication.worker.InspectionSyncWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -88,6 +87,16 @@ class InspectionRepositoryImpl @Inject constructor(
     override suspend fun deleteLocal(id: String) = withContext(ioDispatcher) {
         inspectionDao.delete(id)
         sync()
+    }
+
+    private suspend fun sync() {
+        if (context.isOnline()) {
+            runCatching { pushPendingChanges() }
+                .onFailure { scheduleImmediateSync() }
+            runCatching { pullRemoteChanges() }
+        } else {
+            scheduleImmediateSync()
+        }
     }
 
     override suspend fun pushPendingChanges() = withContext(ioDispatcher) {
@@ -155,16 +164,6 @@ class InspectionRepositoryImpl @Inject constructor(
         started = false
     }
 
-    private suspend fun sync() {
-        if (isOnline()) {
-            runCatching { pushPendingChanges() }
-                .onFailure { scheduleImmediateSync() }
-            runCatching { pullRemoteChanges() }
-        } else {
-            scheduleImmediateSync()
-        }
-    }
-
     private fun scheduleImmediateSync() {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -179,12 +178,6 @@ class InspectionRepositoryImpl @Inject constructor(
     }
 
     private fun now() = Clock.System.now()
-    private fun isOnline(): Boolean {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val nw = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(nw) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    }
 
     suspend fun resetInspectionWatermark() = withContext(ioDispatcher) {
         syncMetaDao.upsert(SyncMeta(key = metaKey(), lastEpoch = 0L))

@@ -28,4 +28,10 @@ object FirestoreModule {
     fun provideInspectionCollection(db: FirebaseFirestore): CollectionReference = db.collection(
         "inspection"
     )
+
+    @Provides
+    @LogCollection
+    fun provideLogCollection(db: FirebaseFirestore): CollectionReference = db.collection(
+        "log"
+    )
 }

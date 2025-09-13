@@ -1,12 +1,12 @@
 package com.tiramisu.groupapplication.data.remote.dto
 
-import com.google.firebase.Timestamp
 import com.tiramisu.groupapplication.domain.enums.InspectionStatus
 import com.tiramisu.groupapplication.domain.model.Inspection
-import java.util.Date
+import com.tiramisu.groupapplication.domain.model.InspectionLog
+import com.tiramisu.groupapplication.util.ext.toKtInstant
+import com.tiramisu.groupapplication.util.ext.toTimestamp
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 
 private fun InspectionStatus.toRaw(): String = name.lowercase()
 private fun String.toInspectionStatus(): InspectionStatus =
@@ -14,10 +14,8 @@ private fun String.toInspectionStatus(): InspectionStatus =
 
 @OptIn(ExperimentalTime::class)
 fun InspectionDto.toInspection(id: String): Inspection = Inspection(
-    createdAt = this.createdAt?.toDate()?.time?.let { Instant.fromEpochMilliseconds(it) }
-        ?: Clock.System.now(),
-    updatedAt = this.updatedAt?.toDate()?.time?.let { Instant.fromEpochMilliseconds(it) }
-        ?: Clock.System.now(),
+    createdAt = this.createdAt?.toKtInstant() ?: Clock.System.now(),
+    updatedAt = this.updatedAt?.toKtInstant() ?: Clock.System.now(),
     id = id,
     type = this.type,
     title = this.title,
@@ -32,8 +30,8 @@ fun InspectionDto.toInspection(id: String): Inspection = Inspection(
 
 @OptIn(ExperimentalTime::class)
 fun Inspection.toInspectionDto(): InspectionDto = InspectionDto(
-    createdAt = Timestamp(Date(this.createdAt.toEpochMilliseconds())),
-    updatedAt = Timestamp(Date(this.updatedAt.toEpochMilliseconds())),
+    createdAt = this.createdAt.toTimestamp(),
+    updatedAt = this.updatedAt.toTimestamp(),
     type = this.type,
     title = this.title,
     notes = this.notes,
@@ -43,3 +41,19 @@ fun Inspection.toInspectionDto(): InspectionDto = InspectionDto(
     latitude = this.lat,
     longitude = this.lng
 )
+
+fun InspectionLog.toDto(): InspectionLogDto =
+    InspectionLogDto(
+        id = id,
+        inspectionId = inspectionId,
+        info = info,
+        createdAt = this.createdAt?.toTimestamp(),
+    )
+
+fun InspectionLogDto.toDomain(): InspectionLog =
+    InspectionLog(
+        id = id,
+        inspectionId = inspectionId,
+        info = info,
+        createdAt = createdAt?.toKtInstant()
+    )
