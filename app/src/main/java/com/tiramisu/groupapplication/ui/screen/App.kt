@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
@@ -42,8 +43,6 @@ fun App(
     val coroutineScope = rememberCoroutineScope()
     val authRepo = mainViewModel.authRepo
 
-    val isOnline by appViewModel.isOnline.collectAsStateWithLifecycle()
-
     NavHost(
         navController = navController,
         startDestination = Routes.Dashboard.route,
@@ -61,7 +60,8 @@ fun App(
                         title = {
                             Text(
                                 "Dashboard (${user?.role})",
-                                style = MaterialTheme.typography.titleLarge
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
                             )
                         },
                     )

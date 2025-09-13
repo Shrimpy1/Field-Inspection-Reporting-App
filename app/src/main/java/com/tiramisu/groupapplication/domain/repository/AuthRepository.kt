@@ -17,7 +17,7 @@ interface AuthRepository {
      * Attempts to sign in a user and verifies their role.
      * @return A Result containing the FirebaseUser on success or an exception on failure.
      */
-    suspend fun signIn(email: String, pass: String, role: String): Result<FirebaseUser>
+    suspend fun signIn(email: String, pass: String): Result<FirebaseUser>
 
     /**
      * Attempts to create a new user account with the given email, password and role.
@@ -30,4 +30,3 @@ interface AuthRepository {
      */
     suspend fun signOut()
 }
-

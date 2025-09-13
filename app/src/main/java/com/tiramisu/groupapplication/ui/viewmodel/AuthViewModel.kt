@@ -33,8 +33,7 @@ class AuthViewModel @Inject constructor(
     fun signIn(email: String, pass: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            val selectedRoleName = _uiState.value.selectedRole.name
-            authRepo.signIn(email, pass, selectedRoleName)
+            authRepo.signIn(email, pass)
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false, error = e.message) }
                 }
@@ -58,4 +57,3 @@ class AuthViewModel @Inject constructor(
         }
     }
 }
-

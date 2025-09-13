@@ -29,25 +29,13 @@ class AuthRepositoryImpl @Inject constructor(
         awaitClose { auth.removeAuthStateListener(listener) }
     }
 
-    override suspend fun signIn(email: String, pass: String, role: String): Result<FirebaseUser> =
+    override suspend fun signIn(email: String, pass: String): Result<FirebaseUser> =
         withContext(ioDispatcher) {
             runCatching {
-                // 1. Authenticate with Firebase Auth
                 val authResult = auth.signInWithEmailAndPassword(email, pass).await()
                 val firebaseUser = authResult.user!!
 
-                // 2. Fetch user profile from Firestore
-                val userDoc = firestore.collection("users").document(firebaseUser.uid).get().await()
-                val userProfile = userDoc.toObject(User::class.java)
-
-                // 3. Verify the role
-                if (userProfile?.role == role) {
-                    firebaseUser // Success, return the user
-                } else {
-                    // Roles do not match, throw an error
-                    auth.signOut() // Sign out the user immediately for security
-                    throw IllegalStateException("The selected role does not match your account.")
-                }
+                firebaseUser
             }
         }
 

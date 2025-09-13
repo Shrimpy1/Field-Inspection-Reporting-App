@@ -7,6 +7,7 @@ import com.tiramisu.groupapplication.domain.enums.InspectionStatus
 import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.domain.repository.AuthRepository
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
+import com.tiramisu.groupapplication.domain.repository.LogRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +30,7 @@ data class ReportReviewState(
 class ReportReviewViewModel @Inject constructor(
     private val inspectionRepo: InspectionRepository,
     private val authRepo: AuthRepository,
+    private val logRepo: LogRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val inspectionId: String = savedStateHandle.get<String>("inspectionId")!!
@@ -90,6 +92,14 @@ class ReportReviewViewModel @Inject constructor(
 
             try {
                 inspectionRepo.upsertLocal(updatedInspection)
+
+                val logTag = when (newStatus) {
+                    InspectionStatus.PASSED -> "PASSED"
+                    InspectionStatus.FAILED -> "FAILED"
+                    InspectionStatus.NEEDS_ATTENTION -> "NEEDS_ATTENTION"
+                    else -> "NONE"
+                }
+                logRepo.log(inspectionId, logTag)
                 _state.value = _state.value.copy(isSaving = false, isFinished = true)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(isSaving = false, error = e.message)
