@@ -30,6 +30,12 @@ object FirestoreModule {
     )
 
     @Provides
+    @ProfileCollection
+    fun provideProfileCollection(db: FirebaseFirestore): CollectionReference = db.collection(
+        "users"
+    )
+
+    @Provides
     @LogCollection
     fun provideLogCollection(db: FirebaseFirestore): CollectionReference = db.collection(
         "log"

@@ -10,7 +10,7 @@ import com.tiramisu.groupapplication.util.Converters
 
 @Database(
     entities = [Inspection::class, InspectionAttachment::class, SyncMeta::class, InspectionLog::class],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 

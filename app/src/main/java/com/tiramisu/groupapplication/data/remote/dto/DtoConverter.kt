@@ -25,7 +25,8 @@ fun InspectionDto.toInspection(id: String): Inspection = Inspection(
     status = this.status.toInspectionStatus(),
     lat = this.latitude,
     lng = this.longitude,
-    pendingSync = true
+    pendingSync = true,
+    createdBy = this.createdBy,
 )
 
 @OptIn(ExperimentalTime::class)
@@ -39,7 +40,8 @@ fun Inspection.toInspectionDto(): InspectionDto = InspectionDto(
     outcome = this.outcome,
     status = this.status.toRaw(),
     latitude = this.lat,
-    longitude = this.lng
+    longitude = this.lng,
+    createdBy = this.createdBy,
 )
 
 fun InspectionLog.toDto(): InspectionLogDto =

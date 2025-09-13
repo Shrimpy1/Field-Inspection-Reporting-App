@@ -1,9 +1,8 @@
 package com.tiramisu.groupapplication.data.local
 
 import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Upsert
 import com.tiramisu.groupapplication.domain.enums.AttachmentStatus
 import com.tiramisu.groupapplication.domain.model.InspectionAttachment
 import kotlinx.coroutines.flow.Flow
@@ -13,10 +12,10 @@ interface InspectionAttachmentDao {
     @Query("SELECT * FROM inspection_attachments WHERE inspectionId = :inspectionId ORDER BY createdAt DESC")
     fun getForInspection(inspectionId: String): Flow<List<InspectionAttachment>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun upsertAll(items: List<InspectionAttachment>)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun upsert(item: InspectionAttachment)
 
     @Query("UPDATE inspection_attachments SET status = :status, lastError = :error WHERE id = :id")

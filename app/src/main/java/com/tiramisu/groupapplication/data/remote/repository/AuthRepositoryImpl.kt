@@ -2,8 +2,9 @@ package com.tiramisu.groupapplication.data.remote.repository
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.CollectionReference
 import com.tiramisu.groupapplication.di.IoDispatcher
+import com.tiramisu.groupapplication.di.ProfileCollection
 import com.tiramisu.groupapplication.domain.model.User
 import com.tiramisu.groupapplication.domain.repository.AuthRepository
 import kotlinx.coroutines.CoroutineDispatcher
@@ -16,7 +17,7 @@ import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
     private val auth: FirebaseAuth,
-    private val firestore: FirebaseFirestore,
+    @ProfileCollection private val profileCol: CollectionReference,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : AuthRepository {
 
@@ -45,7 +46,7 @@ class AuthRepositoryImpl @Inject constructor(
                 val authResult = auth.createUserWithEmailAndPassword(email, pass).await()
                 val firebaseUser = authResult.user!!
                 val userProfile = User(uid = firebaseUser.uid, email = email, role = role)
-                firestore.collection("users").document(firebaseUser.uid).set(userProfile).await()
+                profileCol.document(firebaseUser.uid).set(userProfile).await()
                 firebaseUser
             }
         }

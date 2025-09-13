@@ -9,6 +9,9 @@ annotation class Firestore
 annotation class InspectionCollection
 
 @Qualifier
+annotation class ProfileCollection
+
+@Qualifier
 annotation class LogCollection
 
 @Qualifier

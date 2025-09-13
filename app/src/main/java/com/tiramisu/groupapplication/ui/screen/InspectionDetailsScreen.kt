@@ -136,6 +136,9 @@ fun InspectionDetailsScreen(
     navController: NavHostController
 ) {
     val inspection = state.inspection
+    val uid = state.userId
+    val isEditingAllowed =
+        inspection?.status == InspectionStatus.PENDING_REVIEW && inspection.createdBy == uid
 
     Scaffold(
         topBar = {
@@ -155,13 +158,13 @@ fun InspectionDetailsScreen(
                     }
                     IconButton(
                         onClick = onEdit,
-                        enabled = inspection?.id?.isNotBlank() == true && (inspection.status == InspectionStatus.PENDING_REVIEW || inspection.status == InspectionStatus.NEEDS_ATTENTION)
+                        enabled = isEditingAllowed
                     ) {
                         Icon(Icons.Filled.Edit, contentDescription = "Edit")
                     }
                     IconButton(
                         onClick = onDelete,
-                        enabled = inspection != null && !state.deleteInProgress
+                        enabled = isEditingAllowed && !state.deleteInProgress
                     ) {
                         Icon(Icons.Filled.Delete, contentDescription = "Delete")
                     }

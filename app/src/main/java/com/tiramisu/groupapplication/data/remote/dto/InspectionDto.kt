@@ -14,5 +14,6 @@ data class InspectionDto @OptIn(ExperimentalTime::class) constructor(
     val outcome: String = "",
     val status: String = "",
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null,
+    val createdBy: String? = null
 )
