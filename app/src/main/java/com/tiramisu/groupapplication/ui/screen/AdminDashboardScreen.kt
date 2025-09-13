@@ -56,7 +56,7 @@ fun AdminDashboardScreen(
                 modifier = Modifier.padding(16.dp),
             ) {
                 Text(
-                    text = "Logs",
+                    text = "User Management",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
