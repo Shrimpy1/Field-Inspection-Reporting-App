@@ -35,7 +35,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun App(
     mainViewModel: MainViewModel = hiltViewModel(),
-    appViewModel: AppViewModel = hiltViewModel()
+    appViewModel: AppViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
 
@@ -87,7 +87,9 @@ fun App(
                             navController.navigate(Routes.Review.createRoute(inspectionId))
                         })
 
-                        UserRole.ADMIN.name -> AdminDashboardScreen()
+                        UserRole.ADMIN.name -> AdminDashboardScreen(
+                            onNavigateToLogs = { navController.navigate(Routes.Logs.route) }
+                        )
                     }
                 }
             }
@@ -153,6 +155,13 @@ fun App(
                 mainViewModel = mainViewModel,
                 navController = navController,
                 onLogout = { coroutineScope.launch { authRepo.signOut() } }
+            )
+        }
+
+        // Logs
+        composable(Routes.Logs.route) {
+            LogsScreen(
+                onBack = { navController.popBackStack() }
             )
         }
 

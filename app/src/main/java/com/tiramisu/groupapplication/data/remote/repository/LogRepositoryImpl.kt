@@ -1,6 +1,7 @@
 package com.tiramisu.groupapplication.data.remote.repository
 
 import android.content.Context
+import android.net.Uri
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
@@ -25,6 +26,8 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.time.Instant
 
 @Singleton
@@ -36,23 +39,17 @@ class LogRepositoryImpl @Inject constructor(
     @ApplicationScope private val appScope: CoroutineScope,
     @ApplicationContext private val context: Context,
 ) : LogRepository {
-    private var listening: Boolean
-        get() {
-            return this.listening
-        }
-        set(value) {
-            this.listening = value
-        }
+    @OptIn(ExperimentalAtomicApi::class)
+    private var listening = AtomicBoolean(false)
 
-    fun getAllLogs() = dao.getAllLogs().also {
+    override fun getAllLogs() = dao.getAllLogs().also {
         // start remote → local mirror once
         remoteListenOnce()
     }
 
+    @OptIn(ExperimentalAtomicApi::class)
     private fun remoteListenOnce() {
-        if (listening) return
-
-        listening = true
+        if (!listening.compareAndSet(false, true)) return
 
         remote.listen().onEach { remoteList ->
             withContext(ioDispatcher) { dao.insertAll(remoteList) }
@@ -85,11 +82,10 @@ class LogRepositoryImpl @Inject constructor(
     override suspend fun pushPendingChanges() = withContext(ioDispatcher) {
         val pending = dao.getPending()
         if (pending.isEmpty()) return@withContext
-        val pushedIds = mutableListOf<String>()
 
         remote.pushBatch(pending)
 
-        dao.markSynced(pushedIds)
+        dao.markSynced(pending.map { it.id })
     }
 
     private fun schedulePush() {
@@ -103,5 +99,62 @@ class LogRepositoryImpl @Inject constructor(
             .build()
 
         work.enqueueUniqueWork("inspection-push", ExistingWorkPolicy.APPEND_OR_REPLACE, req)
+    }
+
+    override suspend fun exportToCsv(
+        targetUri: Uri,
+        inspectionId: String?,
+        since: Long?,
+        until: Long?
+    ): Unit = withContext(ioDispatcher) {
+        context.contentResolver.openOutputStream(targetUri)?.bufferedWriter(Charsets.UTF_8)
+            .use { out ->
+                // UTF-8 BOM helps Excel detect encoding
+                out?.write("\uFEFF")
+                out?.write("id,createdAt,createdAt_iso,inspectionId,info\n")
+
+                // ISO timestamp in UTC
+                val sdf =
+                    java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+                        .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+
+                dao.exportCursor(inspectionId, since, until).use { c ->
+                    val idxId = c.getColumnIndexOrThrow("id")
+                    val idxCreatedAt = c.getColumnIndexOrThrow("createdAt")
+                    val idxInspectionId = c.getColumnIndexOrThrow("inspectionId")
+                    val idxInfo = c.getColumnIndexOrThrow("info")
+
+                    while (c.moveToNext()) {
+                        val id = c.getString(idxId) ?: ""
+                        val createdAtMs = c.getLong(idxCreatedAt)
+                        val createdAtIso = sdf.format(java.util.Date(createdAtMs))
+                        val inspectionId = c.getString(idxInspectionId) ?: ""
+                        val info = c.getString(idxInfo) ?: ""
+
+                        out?.write(
+                            csvRow(
+                                listOf(
+                                    id,
+                                    createdAtMs.toString(),
+                                    createdAtIso,
+                                    inspectionId,
+                                    info,
+                                )
+                            )
+                        )
+                        out?.write("\n")
+                    }
+                }
+                out?.flush()
+            }
+    }
+
+    private fun csvRow(fields: List<String>) =
+        fields.joinToString(",") { escapeCsv(it) }
+
+    private fun escapeCsv(s: String): String {
+        val needsQuote = s.indexOfFirst { it == ',' || it == '"' || it == '\n' || it == '\r' } >= 0
+        val doubled = s.replace("\"", "\"\"")
+        return if (needsQuote) "\"$doubled\"" else doubled
     }
 }

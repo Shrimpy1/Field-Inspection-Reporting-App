@@ -33,4 +33,20 @@ interface LogDao {
 
     @Query("SELECT * FROM inspection_logs ORDER BY createdAt DESC")
     fun getAllLogs(): Flow<List<InspectionLog>>
+
+    @Query(
+        """
+        SELECT id, createdAt, inspectionId, info
+        FROM inspection_logs
+        WHERE (:inspectionId IS NULL OR inspectionId = :inspectionId)
+          AND (:since IS NULL OR createdAt >= :since)
+          AND (:until IS NULL OR createdAt <  :until)
+        ORDER BY createdAt ASC
+    """
+    )
+    fun exportCursor(
+        inspectionId: String? = null,
+        since: Long? = null,
+        until: Long? = null
+    ): android.database.Cursor
 }
