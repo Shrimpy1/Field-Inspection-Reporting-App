@@ -38,8 +38,6 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -49,11 +47,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -85,10 +79,6 @@ import com.tiramisu.groupapplication.ui.viewmodel.InspectionFormViewModel
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.AttachmentUi
 import com.tiramisu.groupapplication.util.map.awaitBestLocation
 import kotlinx.coroutines.launch
-import java.time.Instant
-import java.time.LocalTime
-import java.time.ZoneId
-
 
 @SuppressLint("DefaultLocale")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
@@ -137,7 +127,7 @@ fun InspectionForm(
                     viewModel.setGeneralError("Couldn't get your location. Try again.")
                 }
                 locating = false
-            } catch (e: SecurityException) {
+            } catch (_: SecurityException) {
                 viewModel.setGeneralError("Location permission missing.")
             } finally {
                 locating = false
@@ -554,70 +544,3 @@ private data class Quad<A, B, C, D>(
     val third: C,
     val fourth: D
 )
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DateTimePickerDialog(
-    initialEpochMillis: Long,
-    onConfirm: (epochMillis: Long) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val zone = remember { ZoneId.systemDefault() }
-    val initialInstant = remember(initialEpochMillis) { Instant.ofEpochMilli(initialEpochMillis) }
-    val initialLocalDate = remember(initialInstant) { initialInstant.atZone(zone).toLocalDate() }
-    val initialLocalTime = remember(initialInstant) { initialInstant.atZone(zone).toLocalTime() }
-
-    // Date state
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = initialLocalDate
-            .atStartOfDay(zone)
-            .toInstant()
-            .toEpochMilli()
-    )
-
-    // Time state (24h format by default)
-    val timePickerState = rememberTimePickerState(
-        initialHour = initialLocalTime.hour,
-        initialMinute = initialLocalTime.minute,
-        is24Hour = true
-    )
-
-    DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val selectedDateMillis = datePickerState.selectedDateMillis
-                    if (selectedDateMillis == null) {
-                        onDismiss()
-                        return@TextButton
-                    }
-                    val pickedDate = Instant.ofEpochMilli(selectedDateMillis)
-                        .atZone(zone)
-                        .toLocalDate()
-                    val pickedTime = LocalTime.of(timePickerState.hour, timePickerState.minute)
-                    val epoch = pickedDate
-                        .atTime(pickedTime)
-                        .atZone(zone)
-                        .toInstant()
-                        .toEpochMilli()
-                    onConfirm(epoch)
-                }
-            ) {
-                Text("OK")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    ) {
-        // Custom content inside DatePickerDialog: DatePicker + TimePicker
-        Column(Modifier.padding(8.dp)) {
-            DatePicker(state = datePickerState)
-            Spacer(Modifier.height(8.dp))
-            TimePicker(state = timePickerState)
-        }
-    }
-}
