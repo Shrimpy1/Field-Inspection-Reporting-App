@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.domain.repository.AttachmentRepository
+import com.tiramisu.groupapplication.domain.repository.AuthRepository
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
 import com.tiramisu.groupapplication.domain.repository.LogRepository
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.AttachmentUi
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -24,6 +26,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class InspectionDetailsState(
+    val userId: String? = null,
     val inspection: Inspection? = null,
     val attachmentItems: List<AttachmentUi> = emptyList(),
     val isLoading: Boolean = true,
@@ -42,6 +45,7 @@ class InspectionDetailsViewModel @Inject constructor(
     private val repo: InspectionRepository,
     private val attachmentRepo: AttachmentRepository,
     private val logRepo: LogRepository,
+    private val authRepo: AuthRepository,
     savedStateHandle: SavedStateHandle,
     private val linkResolver: AttachmentLinkResolver
 ) : ViewModel() {
@@ -63,6 +67,7 @@ class InspectionDetailsViewModel @Inject constructor(
             lastError
         ) { inspection, attachments, sync, deleting, error ->
             InspectionDetailsState(
+                userId = authRepo.currentUser.firstOrNull()?.uid,
                 inspection = inspection,
                 attachmentItems = toUiList(attachments, linkResolver),
                 isLoading = (inspection == null && error == null),
@@ -81,7 +86,9 @@ class InspectionDetailsViewModel @Inject constructor(
     val events = _events.receiveAsFlow()
 
     init {
-        viewModelScope.launch { attachmentRepo.hydrateFromRemoteIfEmpty(inspectionId) }
+        viewModelScope.launch {
+            attachmentRepo.hydrateFromRemoteIfEmpty(inspectionId)
+        }
     }
 
     fun deleteInspection() = viewModelScope.launch {
