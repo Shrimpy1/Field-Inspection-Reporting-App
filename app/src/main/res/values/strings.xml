@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">GroupApplication</string>
+    <string name="app_name">Field Inspection Reporting</string>
     <string name="SUPABASE_URL">Not Signed In</string>
 </resources>
