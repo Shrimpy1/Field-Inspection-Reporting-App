@@ -1,5 +1,6 @@
 package com.tiramisu.groupapplication.ui.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,6 +18,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.onStart
@@ -55,6 +57,13 @@ class InspectionDetailsViewModel @Inject constructor(
 
     private val deleteInProgress = MutableStateFlow(false)
     private val lastError = MutableStateFlow<Throwable?>(null)
+    private val _isExporting = MutableStateFlow(false)
+    val isExporting: StateFlow<Boolean> = _isExporting.asStateFlow()
+    private val _exportMessage = MutableStateFlow<String?>(null)
+    val exportMessage: StateFlow<String?> = _exportMessage.asStateFlow()
+    private val _exportError = MutableStateFlow<String?>(null)
+    val exportError: StateFlow<String?> = _exportError.asStateFlow()
+
 
     val uiState: StateFlow<InspectionDetailsState> =
         combine(
@@ -108,5 +117,22 @@ class InspectionDetailsViewModel @Inject constructor(
                 )
             }
         deleteInProgress.value = false
+    }
+
+    fun exportLogs(target: Uri) {
+        viewModelScope.launch {
+            _isExporting.value = true
+            _exportMessage.value = null
+            _exportError.value = null
+            try {
+                // Use the repository's CSV export
+                logRepo.exportToCsv(targetUri = target, inspectionId = inspectionId)
+                _exportMessage.value = "Exported logs to CSV"
+            } catch (t: Throwable) {
+                _exportError.value = t.message ?: "Failed to export CSV"
+            } finally {
+                _isExporting.value = false
+            }
+        }
     }
 }

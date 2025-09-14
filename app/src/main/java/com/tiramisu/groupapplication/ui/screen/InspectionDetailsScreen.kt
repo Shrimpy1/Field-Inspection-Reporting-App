@@ -1,5 +1,8 @@
 package com.tiramisu.groupapplication.ui.screen
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +25,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -29,6 +33,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -71,6 +77,18 @@ fun InspectionDetailsRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    val isExporting by viewModel.isExporting.collectAsStateWithLifecycle()
+    val exportMessage by viewModel.exportMessage.collectAsStateWithLifecycle()
+    val exportError by viewModel.exportError.collectAsStateWithLifecycle()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(exportMessage) {
+        exportMessage?.let { snackbarHostState.showSnackbar(it) }
+    }
+    LaunchedEffect(exportError) {
+        exportError?.let { snackbarHostState.showSnackbar(it) }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { ev ->
@@ -107,6 +125,11 @@ fun InspectionDetailsRoute(
         },
         navController = navController,
         user = user,
+        exportLogs = { uri -> viewModel.exportLogs(uri) },
+        isExporting = isExporting,
+        exportMessage = exportMessage,
+        exportError = exportError,
+        snackbarHostState = snackbarHostState
     )
 
     if (confirmDelete) {
@@ -139,7 +162,12 @@ fun InspectionDetailsScreen(
     onDelete: () -> Unit = {},
     onEdit: () -> Unit = {},
     onOpenMap: () -> Unit = {},
-    navController: NavHostController
+    navController: NavHostController,
+    exportLogs: (Uri) -> Unit,
+    isExporting: Boolean = false,
+    exportMessage: String? = null,
+    exportError: String? = null,
+    snackbarHostState: SnackbarHostState
 ) {
     val inspection = state.inspection
     val uid = state.userId
@@ -185,7 +213,8 @@ fun InspectionDetailsScreen(
         },
         bottomBar = {
             NavBar(navController = navController)
-        }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { padding ->
         Box(
             modifier = Modifier
@@ -216,7 +245,11 @@ fun InspectionDetailsScreen(
                 else -> {
                     InspectionDetailsContent(
                         inspection = inspection,
-                        attachments = state.attachmentItems
+                        attachments = state.attachmentItems,
+                        exportLogs = exportLogs,
+                        isExporting = isExporting,
+                        exportMessage = exportMessage,
+                        exportError = exportError,
                     )
                 }
             }
@@ -228,8 +261,19 @@ fun InspectionDetailsScreen(
 private fun InspectionDetailsContent(
     modifier: Modifier = Modifier,
     inspection: Inspection,
-    attachments: List<AttachmentUi>
+    attachments: List<AttachmentUi>,
+    exportLogs: (Uri) -> Unit,
+    isExporting: Boolean = false,
+    exportMessage: String? = null,
+    exportError: String? = null,
 ) {
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri: Uri? ->
+        uri?.let { exportLogs(it) }
+    }
+
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -283,6 +327,22 @@ private fun InspectionDetailsContent(
             }
             if (index < items.lastIndex) {
                 HorizontalDivider()
+            }
+        }
+
+        item {
+            Button(
+                onClick = {
+                    val filename = "logs-${System.currentTimeMillis()}.csv"
+                    createDocumentLauncher.launch(filename)
+                },
+                enabled = !isExporting
+            ) {
+                if (isExporting) {
+                    CircularProgressIndicator(modifier = Modifier.height(18.dp))
+                } else {
+                    Text("Export CSV Report")
+                }
             }
         }
     }
