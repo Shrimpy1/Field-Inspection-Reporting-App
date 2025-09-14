@@ -1,5 +1,7 @@
 package com.tiramisu.groupapplication.ui.screen
 
+import android.content.ClipData
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -32,6 +34,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -50,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -75,6 +79,7 @@ fun InspectionDetailsRoute(
     navController: NavHostController,
     user: User
 ) {
+    val context = LocalContext.current
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     val isExporting by viewModel.isExporting.collectAsStateWithLifecycle()
@@ -96,6 +101,22 @@ fun InspectionDetailsRoute(
                 is InspectionDetailsEvent.Deleted -> navController.popBackStack()
                 is InspectionDetailsEvent.Error -> {
                     //TODO: implement error screen
+                }
+
+                is InspectionDetailsEvent.SharePdf -> {
+                    val share = Intent(Intent.ACTION_SEND).apply {
+                        type = "application/pdf"
+                        putExtra(Intent.EXTRA_SUBJECT, "Inspection Report")
+                        putExtra(Intent.EXTRA_STREAM, ev.uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        // Helps some apps read the Uri
+                        clipData = ClipData.newUri(
+                            context.contentResolver, "inspection.pdf", ev.uri
+                        )
+                    }
+                    context.startActivity(
+                        Intent.createChooser(share, "Share inspection PDF")
+                    )
                 }
             }
         }
@@ -129,7 +150,8 @@ fun InspectionDetailsRoute(
         isExporting = isExporting,
         exportMessage = exportMessage,
         exportError = exportError,
-        snackbarHostState = snackbarHostState
+        snackbarHostState = snackbarHostState,
+        shareAsPdf = { viewModel.shareAsPdf() }
     )
 
     if (confirmDelete) {
@@ -167,12 +189,20 @@ fun InspectionDetailsScreen(
     isExporting: Boolean = false,
     exportMessage: String? = null,
     exportError: String? = null,
-    snackbarHostState: SnackbarHostState
+    snackbarHostState: SnackbarHostState,
+    shareAsPdf: () -> Unit
 ) {
     val inspection = state.inspection
     val uid = state.userId
     val isEditingAllowed =
         (inspection?.status == InspectionStatus.PENDING_REVIEW && inspection.createdBy == uid) || user.role == UserRole.ADMIN
+
+    LaunchedEffect(exportMessage) {
+        exportMessage?.let { snackbarHostState.showSnackbar(it) }
+    }
+    LaunchedEffect(exportError) {
+        exportError?.let { snackbarHostState.showSnackbar(it) }
+    }
 
     Scaffold(
         topBar = {
@@ -248,8 +278,7 @@ fun InspectionDetailsScreen(
                         attachments = state.attachmentItems,
                         exportLogs = exportLogs,
                         isExporting = isExporting,
-                        exportMessage = exportMessage,
-                        exportError = exportError,
+                        shareAsPdf = shareAsPdf
                     )
                 }
             }
@@ -264,8 +293,7 @@ private fun InspectionDetailsContent(
     attachments: List<AttachmentUi>,
     exportLogs: (Uri) -> Unit,
     isExporting: Boolean = false,
-    exportMessage: String? = null,
-    exportError: String? = null,
+    shareAsPdf: () -> Unit
 ) {
     val createDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
@@ -343,6 +371,12 @@ private fun InspectionDetailsContent(
                 } else {
                     Text("Export CSV Report")
                 }
+            }
+        }
+
+        item {
+            OutlinedButton(onClick = shareAsPdf) {
+                Text("Share as PDF")
             }
         }
     }

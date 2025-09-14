@@ -9,9 +9,11 @@ import com.tiramisu.groupapplication.domain.repository.AttachmentRepository
 import com.tiramisu.groupapplication.domain.repository.AuthRepository
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
 import com.tiramisu.groupapplication.domain.repository.LogRepository
+import com.tiramisu.groupapplication.domain.repository.UserRepository
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.AttachmentUi
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.toUiList
 import com.tiramisu.groupapplication.util.AttachmentLinkResolver
+import com.tiramisu.groupapplication.util.PdfExporter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
@@ -40,6 +42,7 @@ data class InspectionDetailsState(
 sealed interface InspectionDetailsEvent {
     data object Deleted : InspectionDetailsEvent
     data class Error(val message: String) : InspectionDetailsEvent
+    data class SharePdf(val uri: Uri) : InspectionDetailsEvent
 }
 
 @HiltViewModel
@@ -48,8 +51,10 @@ class InspectionDetailsViewModel @Inject constructor(
     private val attachmentRepo: AttachmentRepository,
     private val logRepo: LogRepository,
     private val authRepo: AuthRepository,
+    private val userRepository: UserRepository,
     savedStateHandle: SavedStateHandle,
-    private val linkResolver: AttachmentLinkResolver
+    private val linkResolver: AttachmentLinkResolver,
+    private val pdfExporter: PdfExporter
 ) : ViewModel() {
     private val inspectionId: String = checkNotNull(savedStateHandle["inspectionId"]) {
         "inspectionId is required"
@@ -134,5 +139,38 @@ class InspectionDetailsViewModel @Inject constructor(
                 _isExporting.value = false
             }
         }
+    }
+
+    fun shareAsPdf() = viewModelScope.launch {
+        val state = uiState.value
+        val inspection = state.inspection ?: run {
+            lastError.value = IllegalStateException("Inspection not loaded")
+            _events.send(InspectionDetailsEvent.Error("Inspection not loaded"))
+            return@launch
+        }
+
+        // Build the PDF input from current state
+        val report = PdfExporter.ReportData(
+            id = inspection.id,
+            title = inspection.title,
+            type = inspection.type.display,
+            score = inspection.score,
+            notes = inspection.notes,
+            latitude = inspection.lat,
+            longitude = inspection.lng,
+            inspectorName = inspection.createdBy?.let {
+                userRepository.getUserProfile(it).firstOrNull()?.email
+            },
+            createdAtMillis = inspection.createdAt.toEpochMilliseconds()
+        )
+
+        // Use your UI items so it works offline (local Uri) or online (URL)
+        val images: List<Pair<Any, String?>> = state.attachmentItems.map { ui ->
+            ui.coilModel to null // add captions if you want
+        }
+
+        // Generate PDF and emit a one-shot event with the Uri
+        val uri = pdfExporter.exportInspectionPdf(report, images)
+        _events.send(InspectionDetailsEvent.SharePdf(uri))
     }
 }
