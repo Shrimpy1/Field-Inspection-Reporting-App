@@ -26,12 +26,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -48,9 +46,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -74,7 +70,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -84,6 +80,7 @@ import com.tiramisu.groupapplication.domain.enums.InspectionType
 import com.tiramisu.groupapplication.domain.model.InspectionAttachment
 import com.tiramisu.groupapplication.ui.component.AttachmentImage
 import com.tiramisu.groupapplication.ui.component.NavBar
+import com.tiramisu.groupapplication.ui.component.TypePickerSheet
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionFormData
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionFormViewModel
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.AttachmentUi
@@ -331,16 +328,16 @@ private fun FormContent(
         }
     }
 
-    // 3) At the bottom of FormContent(...) (so it can render over the screen), add:
-    InspectionTypePickerSheet(
-        show = showTypePicker,
-        selected = formData.type,
-        onDismiss = { showTypePicker = false },
-        onSelect = {
-            onSetType(it)
-            showTypePicker = false
-        }
-    )
+    if (showTypePicker) {
+        TypePickerSheet(
+            selected = formData.type,
+            onDismiss = { showTypePicker = false },
+            onSelect = {
+                onSetType(it)
+                showTypePicker = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -574,57 +571,6 @@ private data class Quad<A, B, C, D>(
     val third: C,
     val fourth: D
 )
-
-// 4) Add this composable in the same file:
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun InspectionTypePickerSheet(
-    show: Boolean,
-    selected: InspectionType?,
-    onDismiss: () -> Unit,
-    onSelect: (InspectionType) -> Unit
-) {
-    if (!show) return
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        val grouped = remember { InspectionType.entries.groupBy { it.category } }
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp)
-        ) {
-            grouped.forEach { (category, types) ->
-                item("header-$category") {
-                    Text(
-                        text = category,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                    )
-                }
-                items(
-                    items = types,
-                    key = { it.name }
-                ) { type ->
-                    ListItem(
-                        headlineContent = { Text(type.display) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(type) },
-                        trailingContent = {
-                            if (type == selected) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null
-                                )
-                            }
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun TypeField(

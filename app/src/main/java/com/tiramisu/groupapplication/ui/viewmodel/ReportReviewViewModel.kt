@@ -54,7 +54,7 @@ class ReportReviewViewModel @Inject constructor(
     }
 
     fun approveReport() {
-        updateReportStatus(InspectionStatus.PASSED, "Approved")
+        updateReportStatus(InspectionStatus.PASSED, _state.value.reviewNotes)
     }
 
     fun rejectReport() {
@@ -63,6 +63,10 @@ class ReportReviewViewModel @Inject constructor(
             return
         }
         updateReportStatus(InspectionStatus.FAILED, _state.value.reviewNotes)
+    }
+
+    fun markNeedsAttention() {
+        updateReportStatus(InspectionStatus.NEEDS_ATTENTION, _state.value.reviewNotes)
     }
 
     private fun updateReportStatus(newStatus: InspectionStatus, notes: String) {

@@ -1,0 +1,216 @@
+package com.tiramisu.groupapplication.ui.component
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudDone
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.tiramisu.groupapplication.domain.enums.InspectionStatus
+import com.tiramisu.groupapplication.domain.model.Inspection
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReportListItem(
+    report: Inspection,
+    onClick: () -> Unit
+) {
+    ElevatedCard(
+        onClick = onClick,
+        enabled = report.id.isNotBlank(),
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        )
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            // Header: Title + Status badge
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = report.title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.padding(4.dp))
+                StatusBadge(status = report.status)
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Secondary line: Type • Outcome
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = "Type/Outcome",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.alpha(0.9f)
+                )
+                Spacer(Modifier.padding(horizontal = 4.dp))
+                Text(
+                    text = report.type.display,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Footer row: Score • Location • Sync
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                InfoPill(
+                    icon = Icons.Outlined.Star,
+                    label = "Score",
+                    value = report.score.ifBlank { "—" },
+                    iconTint = MaterialTheme.colorScheme.tertiary
+                )
+
+                if (report.lat != null && report.lng != null) {
+                    InfoPill(
+                        icon = Icons.Outlined.LocationOn,
+                        label = "Location",
+                        value = "${report.lat.format(3)}, ${report.lng.format(3)}",
+                        iconTint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                PendingSyncPill(
+                    pendingSync = report.pendingSync
+                )
+            }
+
+        }
+    }
+}
+
+@Composable
+private fun PendingSyncPill(
+    modifier: Modifier = Modifier,
+    pendingSync: Boolean
+) {
+    Row(
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CompositionLocalProvider(
+            LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+        ) {
+            Icon(
+                imageVector = if (pendingSync) Icons.Outlined.CloudOff else Icons.Outlined.CloudDone,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+            )
+            Text(
+                text = if (pendingSync) "Pending sync" else "Synced",
+                style = MaterialTheme.typography.labelSmall,
+                fontStyle = FontStyle.Italic,
+                modifier = Modifier.padding(start = 4.dp)
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun StatusBadge(status: InspectionStatus) {
+    val (bg, fg) = statusColors(status)
+    Box(
+        modifier = Modifier
+            .background(color = bg, shape = MaterialTheme.shapes.small)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = status.name.replace('_', ' ').lowercase().replaceFirstChar { it.titlecase() },
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+            color = fg,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun InfoPill(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    iconTint: Color
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = iconTint
+        )
+        Spacer(Modifier.padding(horizontal = 4.dp))
+        Text(
+            text = "$label: $value",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun statusColors(status: InspectionStatus): Pair<Color, Color> {
+    return when (status.name.lowercase()) {
+        "needs_attention" ->
+            MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+
+        "passed" ->
+            MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+
+        "rejected", "failed" ->
+            MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+
+        else ->
+            MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+}
+
+private fun Double.format(digits: Int) = "%.${digits}f".format(this)

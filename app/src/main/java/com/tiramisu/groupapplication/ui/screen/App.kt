@@ -17,7 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -77,7 +77,7 @@ fun App(
             ) { padding ->
                 Box(modifier = Modifier.padding(padding)) {
                     when (user?.role) {
-                        UserRole.INSPECTOR.name -> DashboardScreen(
+                        UserRole.INSPECTOR.name -> InspectorDashboardScreen(
                             onDetail = { id ->
                                 navController.navigate(Routes.InspectionDetails.createRoute(id))
                             },
@@ -135,7 +135,10 @@ fun App(
         }
 
         composable(Routes.Review.route) {
-            ReportReviewScreen(onNavigateBack = { navController.popBackStack() })
+            InspectionReviewScreen(
+                onNavigateBack = { navController.popBackStack() },
+                navController = navController
+            )
         }
 
         // Map view
@@ -162,14 +165,16 @@ fun App(
         // Logs
         composable(Routes.Logs.route) {
             LogsScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                navController = navController
             )
         }
 
         // User List
         composable(Routes.UserList.route) {
             UserListScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                navController = navController
             )
         }
     }

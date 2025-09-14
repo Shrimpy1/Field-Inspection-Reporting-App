@@ -42,30 +42,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation.NavHostController
 import com.tiramisu.groupapplication.domain.enums.UserRole
 import com.tiramisu.groupapplication.domain.model.User
+import com.tiramisu.groupapplication.ui.component.NavBar
 import com.tiramisu.groupapplication.ui.viewmodel.AdminViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserListScreen(
     viewModel: AdminViewModel = hiltViewModel(),
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    navController: NavHostController,
 ) {
     val users by viewModel.allUsers.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Manage Users") },
+                title = {
+                    Text(
+                        "Manage Users",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
                 navigationIcon = {
                     androidx.compose.material3.IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
-        }
+        },
+        bottomBar = { NavBar(navController = navController) }
     ) { padding ->
         LazyColumn(
             modifier = Modifier
