@@ -2,6 +2,7 @@ package com.tiramisu.groupapplication.ui.component
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +25,7 @@ enum class NavBarDestinations(
     val contentDescription: String
 ) {
     DASHBOARD(Routes.Dashboard.route, "Dashboard", Icons.Default.Home, "Dashboard"),
+    MAP(Routes.Map.route, "Map", Icons.Default.Map, "Map"),
     MISC(Routes.Misc.route, "Misc", Icons.Default.Settings, "Misc")
 }
 

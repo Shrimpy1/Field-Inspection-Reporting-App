@@ -140,7 +140,6 @@ fun InspectionForm(
                 locating = false
             }
         }
-
     }
 
     LaunchedEffect(Unit) {

@@ -24,4 +24,5 @@ sealed class Routes(val route: String) {
 
     object Logs : Routes("logs")
     object UserList : Routes("users")
+    object Map : Routes("map")
 }

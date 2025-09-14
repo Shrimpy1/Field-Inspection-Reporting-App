@@ -177,6 +177,20 @@ fun App(
                 navController = navController
             )
         }
+
+        // Map with all inspections
+        composable(Routes.Map.route) {
+            InspectionsMapScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateInspection = { id ->
+                    navController.navigate(
+                        Routes.InspectionDetails.createRoute(
+                            id
+                        )
+                    )
+                }
+            )
+        }
     }
 
     ConnectivityToasts(viewModel = appViewModel)

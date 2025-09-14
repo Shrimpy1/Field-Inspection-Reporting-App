@@ -108,7 +108,6 @@ fun LocationMap(
         )
     )
 
-    // Optionally request location permission so we can show the user dot.
     LaunchedEffect(Unit) {
         permissions.launchMultiplePermissionRequest()
     }
@@ -117,12 +116,6 @@ fun LocationMap(
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(latLng, 16f)
     }
-
-//    LaunchedEffect(permissions.allPermissionsGranted) {
-//        if (permissions.allPermissionsGranted) {
-//            moveCameraTo(cameraPositionState, latLng)
-//        }
-//    }
 
     GoogleMap(
         modifier = Modifier.fillMaxSize(),

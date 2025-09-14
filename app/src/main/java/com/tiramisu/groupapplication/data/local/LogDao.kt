@@ -1,5 +1,6 @@
 package com.tiramisu.groupapplication.data.local
 
+import android.database.Cursor
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -48,5 +49,5 @@ interface LogDao {
         inspectionId: String? = null,
         since: Long? = null,
         until: Long? = null
-    ): android.database.Cursor
+    ): Cursor
 }
