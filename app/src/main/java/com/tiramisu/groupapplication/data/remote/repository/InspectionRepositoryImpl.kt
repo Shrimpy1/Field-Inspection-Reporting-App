@@ -110,6 +110,7 @@ class InspectionRepositoryImpl @Inject constructor(
             val doc = inspectionCol.document(it.id)
             if (it.deletedAt != null) {
                 batch.delete(doc)
+                inspectionDao.delete(it.id)
             } else {
                 batch.set(doc, it.toInspectionDto(), SetOptions.merge())
             }
