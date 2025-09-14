@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -31,11 +32,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -47,9 +48,13 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.TooltipState
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +72,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -78,12 +84,14 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.LocationServices
 import com.tiramisu.groupapplication.domain.enums.InspectionType
 import com.tiramisu.groupapplication.domain.model.InspectionAttachment
+import com.tiramisu.groupapplication.domain.model.QualityFlags
 import com.tiramisu.groupapplication.ui.component.AttachmentImage
 import com.tiramisu.groupapplication.ui.component.NavBar
 import com.tiramisu.groupapplication.ui.component.TypePickerSheet
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionFormData
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionFormViewModel
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.AttachmentUi
+import com.tiramisu.groupapplication.util.image.createTempImageUri
 import com.tiramisu.groupapplication.util.map.awaitBestLocation
 import kotlinx.coroutines.launch
 
@@ -345,65 +353,50 @@ private fun AttachmentsSection(
     onAddImages: (List<Uri>) -> Unit,
     onDeleteAttachment: (String) -> Unit
 ) {
-    val picker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia()
-    ) { uris ->
-        if (uris.isNotEmpty()) onAddImages(uris)
-    }
-
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors()
     ) {
-        // Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
                 text = "Attachments",
                 style = MaterialTheme.typography.titleMedium
             )
-            FilledTonalButton(
-                onClick = {
-                    picker.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+
+            // Empty state
+            if (attachments.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "No attachments yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.padding(6.dp))
+                    Text(
+                        text = "Use Add to select one or more images.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            ) {
-                Icon(Icons.Rounded.Add, contentDescription = "Add images")
-                Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                Text("Add")
+            } else {
+                AttachmentsGrid(
+                    attachments = attachments,
+                    onDeleteAttachment = onDeleteAttachment
+                )
             }
-        }
 
-        // Empty state
-        if (attachments.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "No attachments yet",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.padding(6.dp))
-                Text(
-                    text = "Use Add to select one or more images.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            AttachmentsGrid(
-                attachments = attachments,
-                onDeleteAttachment = onDeleteAttachment
+            MediaRow(
+                onPicked = { uri -> onAddImages(listOf(uri)) },
+                onCaptured = { uri -> onAddImages(listOf(uri)) }
             )
         }
     }
@@ -418,17 +411,12 @@ private fun AttachmentsGrid(
 ) {
     val gridPadding = 8.dp
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        contentPadding = PaddingValues(
-            start = 12.dp,
-            end = 12.dp,
-            bottom = 12.dp
-        ),
+        columns = GridCells.Fixed(2),
         horizontalArrangement = Arrangement.spacedBy(gridPadding),
         verticalArrangement = Arrangement.spacedBy(gridPadding),
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 88.dp, max = 360.dp)
+            .heightIn(min = 140.dp, max = 360.dp)
     ) {
         items(
             items = attachments,
@@ -444,6 +432,7 @@ private fun AttachmentsGrid(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AttachmentTile(
     attachment: AttachmentUi,
@@ -464,6 +453,49 @@ private fun AttachmentTile(
                 modifier = Modifier.matchParentSize(),
                 contentScale = ContentScale.Crop,
             )
+
+            val flag = attachment.raw.qualityFlags
+            val hasDark = flag != null && flag.and(QualityFlags.DARK) != 0
+            val hasBlur = flag != null && flag.and(QualityFlags.BLURRY) != 0
+            val label = when {
+                hasDark && hasBlur -> "Dark & blurry"
+                hasDark -> "Low light"
+                hasBlur -> "Blurry"
+                else -> null
+            }
+            if (label != null) {
+                val tooltipState = remember { TooltipState() } // or rememberTooltipState()
+                val scope = rememberCoroutineScope()
+
+                // Anchor the tooltip in the top-start corner
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp)
+                ) {
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                        tooltip = {
+                            Text(
+                                label,
+                                modifier = Modifier.padding(8.dp),
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        },
+                        state = tooltipState
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Warning,
+                            contentDescription = label,
+                            tint = Color(0xFFFFC107), // yellow
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(MaterialTheme.shapes.small)
+                                .clickable { scope.launch { tooltipState.show() } }
+                        )
+                    }
+                }
+            }
 
             // Gradient for legibility
             Box(
@@ -548,7 +580,9 @@ private fun AttachmentStatusBadge(
                     attachment.lastError.take(24).let { "$label: $it" }
                 } else label,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.labelSmall,
+                fontStyle = FontStyle.Italic,
             )
         },
         leadingIcon = { Icon(icon, contentDescription = null) },
@@ -559,6 +593,37 @@ private fun AttachmentStatusBadge(
         ),
         modifier = modifier
     )
+}
+
+@Composable
+fun MediaRow(
+    onPicked: (Uri) -> Unit,
+    onCaptured: (Uri) -> Unit
+) {
+    val ctx = LocalContext.current
+    var tempUri by remember { mutableStateOf<Uri?>(null) }
+
+    val takePicture = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        val uri = tempUri
+        if (success && uri != null) onCaptured(uri)
+    }
+
+    val pickMedia = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri -> if (uri != null) onPicked(uri) }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(onClick = {
+            tempUri = createTempImageUri(ctx)
+            takePicture.launch(tempUri!!)
+        }) { Text("Camera") }
+
+        OutlinedButton(onClick = {
+            pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        }) { Text("Gallery") }
+    }
 }
 
 /**

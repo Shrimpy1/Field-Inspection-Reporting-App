@@ -36,4 +36,13 @@ interface InspectionAttachmentDao {
 
     @Query("SELECT COUNT(*) FROM inspection_attachments WHERE inspectionId = :inspectionId")
     suspend fun countForInspection(inspectionId: String): Int
+
+    @Query(
+        """
+UPDATE inspection_attachments
+SET qualityFlags=:flags, brightness=:brightness, sharpness=:sharpness
+WHERE id=:id
+"""
+    )
+    suspend fun updateQuality(id: String, flags: Int, brightness: Int, sharpness: Int)
 }

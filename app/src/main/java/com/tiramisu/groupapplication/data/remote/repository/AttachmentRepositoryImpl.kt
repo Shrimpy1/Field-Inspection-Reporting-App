@@ -20,7 +20,7 @@ import com.tiramisu.groupapplication.domain.repository.AttachmentRepository
 import com.tiramisu.groupapplication.util.ext.isOnline
 import com.tiramisu.groupapplication.util.ext.queryMime
 import com.tiramisu.groupapplication.util.ext.querySize
-import com.tiramisu.groupapplication.util.extensionForMime
+import com.tiramisu.groupapplication.util.image.extensionForMime
 import com.tiramisu.groupapplication.worker.DeleteAttachmentWorker
 import com.tiramisu.groupapplication.worker.UploadAttachmentWorker
 import dagger.hilt.android.qualifiers.ApplicationContext

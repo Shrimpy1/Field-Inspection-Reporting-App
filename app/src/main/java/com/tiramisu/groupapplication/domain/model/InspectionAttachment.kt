@@ -17,4 +17,13 @@ data class InspectionAttachment(
     val createdAt: Instant = Clock.System.now(),
     val status: AttachmentStatus = AttachmentStatus.PENDING_UPLOAD,
     val lastError: String? = null,
+    val qualityFlags: Int? = null,
+    val brightness: Int? = null,
+    val sharpness: Int? = null
 )
+
+object QualityFlags {
+    const val NONE = 0;
+    const val DARK = 1;
+    const val BLURRY = 2
+}

@@ -1,14 +1,17 @@
 package com.tiramisu.groupapplication.ui.viewmodel
 
+import android.content.Context
 import android.net.Uri
 import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tiramisu.groupapplication.domain.enums.AttachmentStatus
 import com.tiramisu.groupapplication.domain.enums.InspectionStatus
 import com.tiramisu.groupapplication.domain.enums.InspectionType
 import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.domain.model.InspectionAttachment
+import com.tiramisu.groupapplication.domain.model.QualityFlags
 import com.tiramisu.groupapplication.domain.repository.AttachmentRepository
 import com.tiramisu.groupapplication.domain.repository.AuthRepository
 import com.tiramisu.groupapplication.domain.repository.InspectionRepository
@@ -17,7 +20,10 @@ import com.tiramisu.groupapplication.ui.viewmodel.ui_state.AttachmentUi
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.toUi
 import com.tiramisu.groupapplication.ui.viewmodel.ui_state.toUiList
 import com.tiramisu.groupapplication.util.AttachmentLinkResolver
+import com.tiramisu.groupapplication.util.image.evaluateImageQuality
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -26,6 +32,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.time.ExperimentalTime
@@ -71,7 +78,8 @@ class InspectionFormViewModel @Inject constructor(
     private val logRepo: LogRepository,
     savedStateHandle: SavedStateHandle,
     private val linkResolver: AttachmentLinkResolver,
-    private val auth: AuthRepository
+    private val auth: AuthRepository,
+    @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
     private companion object {
         const val KEY_DRAFT_ID = "draftInspectionId"
@@ -203,23 +211,47 @@ class InspectionFormViewModel @Inject constructor(
     fun addAttachments(picked: List<Uri>) {
         val id = formData.value.editingId ?: draftId
         val current = formData.value.attachments.toMutableList()
+        val newItems = mutableListOf<Pair<String, Uri>>()
 
         picked.forEach { uri ->
+            val tempId = UUID.randomUUID().toString()
             current += toUi(
                 InspectionAttachment(
-                    id = UUID.randomUUID().toString(), // temp client id
+                    id = tempId, // temp client id
                     inspectionId = id,
                     localUri = uri.toString(),         // showable offline via Coil
                     remoteKey = null,                  // not uploaded yet
                     mimeType = "image/*",              // optional placeholder
                     sizeBytes = 0L,                    // unknown at this layer
-                    status = com.tiramisu.groupapplication.domain.enums.AttachmentStatus.PENDING_UPLOAD,
+                    status = AttachmentStatus.PENDING_UPLOAD,
                     lastError = null
                 ), linkResolver
             )
+            newItems += tempId to uri
         }
 
         formData.value = formData.value.copy(attachments = current)
+
+        newItems.forEach { (attId, uri) ->
+            viewModelScope.launch(Dispatchers.Default) {
+                val q = evaluateImageQuality(appContext, uri)
+                val flags = (if (q.tooDark) QualityFlags.DARK else 0) or
+                        (if (q.tooBlurry) QualityFlags.BLURRY else 0)
+
+                withContext(Dispatchers.Main) {
+                    val patched = formData.value.attachments.map { item ->
+                        if (item.id == attId) item.copy(
+                            raw = item.raw.copy(
+                                qualityFlags = flags,
+                                brightness = q.brightness,
+                                sharpness = q.sharpness
+                            ),
+                        ) else item
+                    }
+                    formData.value = formData.value.copy(attachments = patched)
+                }
+            }
+        }
     }
 
     fun removeAttachment(attachmentId: String) {
