@@ -8,6 +8,8 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,9 +26,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -43,7 +48,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -54,6 +61,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,6 +80,7 @@ import androidx.navigation.NavHostController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.LocationServices
+import com.tiramisu.groupapplication.domain.enums.InspectionType
 import com.tiramisu.groupapplication.domain.model.InspectionAttachment
 import com.tiramisu.groupapplication.ui.component.AttachmentImage
 import com.tiramisu.groupapplication.ui.component.NavBar
@@ -194,7 +203,7 @@ private fun FormContent(
     modifier: Modifier = Modifier,
     onGetLocation: () -> Unit,
     formData: InspectionFormData,
-    onSetType: (String) -> Unit,
+    onSetType: (InspectionType) -> Unit,
     onSetTitle: (String) -> Unit,
     onSetNotes: (String) -> Unit,
     onSetScore: (String) -> Unit,
@@ -203,6 +212,8 @@ private fun FormContent(
     onAddImages: (List<Uri>) -> Unit,
     onDeleteAttachment: (String) -> Unit
 ) {
+    var showTypePicker by rememberSaveable { mutableStateOf(false) }
+
     LazyColumn(
         modifier = modifier
             .padding(16.dp),
@@ -210,12 +221,10 @@ private fun FormContent(
         contentPadding = PaddingValues(bottom = 24.dp)
     ) {
         item {
-            OutlinedTextField(
-                value = formData.type,
-                onValueChange = onSetType,
-                label = { Text("Type") },
-                modifier = Modifier.fillMaxWidth().testTag("type_input"),
-                singleLine = true
+            TypeField(
+                selected = formData.type,
+                error = formData.errors.type,
+                onClick = { showTypePicker = true }
             )
         }
 
@@ -224,7 +233,9 @@ private fun FormContent(
                 value = formData.title,
                 onValueChange = onSetTitle,
                 label = { Text("Title") },
-                modifier = Modifier.fillMaxWidth().testTag("title_input"),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("title_input"),
                 singleLine = true
             )
         }
@@ -234,7 +245,9 @@ private fun FormContent(
                 value = formData.notes,
                 onValueChange = onSetNotes,
                 label = { Text("Notes") },
-                modifier = Modifier.fillMaxWidth().testTag("notes_input"),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("notes_input"),
                 singleLine = false,
                 minLines = 3
             )
@@ -245,7 +258,9 @@ private fun FormContent(
                 value = formData.score,
                 onValueChange = onSetScore,
                 label = { Text("Score") },
-                modifier = Modifier.fillMaxWidth().testTag("score_input"),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("score_input"),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
@@ -256,7 +271,9 @@ private fun FormContent(
                 value = formData.outcome,
                 onValueChange = onSetOutcome,
                 label = { Text("Outcome") },
-                modifier = Modifier.fillMaxWidth().testTag("outcome_input"),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("outcome_input"),
                 singleLine = true
             )
         }
@@ -313,6 +330,17 @@ private fun FormContent(
             )
         }
     }
+
+    // 3) At the bottom of FormContent(...) (so it can render over the screen), add:
+    InspectionTypePickerSheet(
+        show = showTypePicker,
+        selected = formData.type,
+        onDismiss = { showTypePicker = false },
+        onSelect = {
+            onSetType(it)
+            showTypePicker = false
+        }
+    )
 }
 
 @Composable
@@ -546,3 +574,93 @@ private data class Quad<A, B, C, D>(
     val third: C,
     val fourth: D
 )
+
+// 4) Add this composable in the same file:
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun InspectionTypePickerSheet(
+    show: Boolean,
+    selected: InspectionType?,
+    onDismiss: () -> Unit,
+    onSelect: (InspectionType) -> Unit
+) {
+    if (!show) return
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        val grouped = remember { InspectionType.entries.groupBy { it.category } }
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp)
+        ) {
+            grouped.forEach { (category, types) ->
+                item("header-$category") {
+                    Text(
+                        text = category,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                    )
+                }
+                items(
+                    items = types,
+                    key = { it.name }
+                ) { type ->
+                    ListItem(
+                        headlineContent = { Text(type.display) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(type) },
+                        trailingContent = {
+                            if (type == selected) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null
+                                )
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TypeField(
+    selected: InspectionType?,
+    error: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = selected?.display.orEmpty(),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Inspection Type") },
+            placeholder = { Text("Select a type") },
+            isError = error != null,
+            supportingText = { error?.let { Text(it) } },
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = null
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("type_input")
+        )
+        // Full-surface invisible click target (more reliable than clickable on TextField)
+        Spacer(
+            Modifier
+                .matchParentSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick
+                )
+        )
+    }
+}

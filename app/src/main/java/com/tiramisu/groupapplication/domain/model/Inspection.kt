@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.google.firebase.firestore.Exclude
 import com.tiramisu.groupapplication.domain.enums.InspectionStatus
+import com.tiramisu.groupapplication.domain.enums.InspectionType
 import java.util.UUID
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -15,7 +16,7 @@ data class Inspection @OptIn(ExperimentalTime::class) constructor(
         .replace("-", ""),
     val createdAt: Instant = Clock.System.now(),
     val updatedAt: Instant = Clock.System.now(),
-    val type: String,
+    val type: InspectionType,
     val title: String,
     val notes: String,
     val score: String,

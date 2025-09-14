@@ -122,10 +122,7 @@ fun ReportListItem(
                 )
                 Spacer(Modifier.padding(horizontal = 4.dp))
                 Text(
-                    text = listOfNotNull(
-                        report.type.takeIf { it.isNotBlank() },
-                        report.outcome.takeIf { it.isNotBlank() }
-                    ).joinToString(" • "),
+                    text = report.type.display,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

@@ -1,6 +1,7 @@
 package com.tiramisu.groupapplication.data.remote.dto
 
 import com.tiramisu.groupapplication.domain.enums.InspectionStatus
+import com.tiramisu.groupapplication.domain.enums.InspectionType
 import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.domain.model.InspectionLog
 import com.tiramisu.groupapplication.util.ext.toKtInstant
@@ -17,7 +18,7 @@ fun InspectionDto.toInspection(id: String): Inspection = Inspection(
     createdAt = this.createdAt?.toKtInstant() ?: Clock.System.now(),
     updatedAt = this.updatedAt?.toKtInstant() ?: Clock.System.now(),
     id = id,
-    type = this.type,
+    type = InspectionType.valueOf(this.type),
     title = this.title,
     notes = this.notes,
     score = this.score,
@@ -33,7 +34,7 @@ fun InspectionDto.toInspection(id: String): Inspection = Inspection(
 fun Inspection.toInspectionDto(): InspectionDto = InspectionDto(
     createdAt = this.createdAt.toTimestamp(),
     updatedAt = this.updatedAt.toTimestamp(),
-    type = this.type,
+    type = this.type.name,
     title = this.title,
     notes = this.notes,
     score = this.score,

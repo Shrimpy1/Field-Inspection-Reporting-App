@@ -6,6 +6,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tiramisu.groupapplication.domain.enums.InspectionStatus
+import com.tiramisu.groupapplication.domain.enums.InspectionType
 import com.tiramisu.groupapplication.domain.model.Inspection
 import com.tiramisu.groupapplication.domain.model.InspectionAttachment
 import com.tiramisu.groupapplication.domain.repository.AttachmentRepository
@@ -38,7 +39,7 @@ sealed class InspectionFormState {
 
 data class InspectionFormData(
     val isEditing: Boolean = false,
-    val type: String = "",
+    val type: InspectionType? = null,
     val title: String = "",
     val notes: String = "",
     val score: String = "",
@@ -140,7 +141,7 @@ class InspectionFormViewModel @Inject constructor(
         )
     }
 
-    fun setType(type: String) {
+    fun setType(type: InspectionType) {
         val cur = formData.value
         formData.value = cur.copy(
             type = type,
@@ -297,8 +298,8 @@ class InspectionFormViewModel @Inject constructor(
     }
 
     // ----- Validation helpers -----
-    private fun validateType(type: String): String? =
-        if (type.isBlank()) "Type is required" else null
+    private fun validateType(type: InspectionType?): String? =
+        if (type == null) "Type is required" else null
 
     private fun validateTitle(title: String): String? =
         if (title.isBlank()) "Title is required" else null
@@ -320,7 +321,7 @@ class InspectionFormViewModel @Inject constructor(
         // Editing: start from original and override only the edited fields.
         originalInspection?.let { orig ->
             return orig.copy(
-                type = data.type.trim(),
+                type = data.type!!,
                 title = data.title.trim(),
                 notes = data.notes.trim(),
                 score = data.score.trim(),
@@ -334,7 +335,7 @@ class InspectionFormViewModel @Inject constructor(
         // Creating new: construct the full object
         return Inspection(
             id = data.editingId ?: draftId,
-            type = data.type.trim(),
+            type = data.type!!,
             title = data.title.trim(),
             notes = data.notes.trim(),
             score = data.score.trim(),

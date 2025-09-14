@@ -246,7 +246,7 @@ private fun InspectionDetailsContent(
 
         val items = listOf(
             "Created" to formatInstant(inspection.createdAt),
-            "Type" to inspection.type,
+            "Type" to inspection.type.display,
             "Status" to inspection.status.name,
             "Score" to inspection.score,
             "Outcome" to inspection.outcome,

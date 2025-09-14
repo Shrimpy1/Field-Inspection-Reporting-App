@@ -45,9 +45,11 @@ fun ReportReviewScreen(
 
     Scaffold { padding ->
         if (state.inspection == null) {
-            Box(modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
                 CircularProgressIndicator()
             }
         } else {
@@ -64,7 +66,7 @@ fun ReportReviewScreen(
                 HorizontalDivider()
 
                 InspectionDetailItem("Title:", inspection.title)
-                InspectionDetailItem("Type:", inspection.type)
+                InspectionDetailItem("Type:", inspection.type.display)
                 InspectionDetailItem("Notes:", inspection.notes)
                 InspectionDetailItem("Score:", inspection.score)
                 InspectionDetailItem("Outcome:", inspection.outcome)
