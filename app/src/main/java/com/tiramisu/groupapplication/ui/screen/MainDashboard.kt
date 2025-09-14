@@ -30,7 +30,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.tiramisu.groupapplication.ui.component.DateRangeSheet
 import com.tiramisu.groupapplication.ui.component.Filter
 import com.tiramisu.groupapplication.ui.component.InspectionFilter
-import com.tiramisu.groupapplication.ui.component.ReportListItem
+import com.tiramisu.groupapplication.ui.component.InspectionListItem
 import com.tiramisu.groupapplication.ui.component.SearchTextField
 import com.tiramisu.groupapplication.ui.component.TypePickerSheet
 import com.tiramisu.groupapplication.ui.viewmodel.DashboardViewModel
@@ -39,7 +39,7 @@ import com.tiramisu.groupapplication.util.ext.filterByTitleQuery
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InspectorDashboardScreen(
+fun MainDashboard(
     viewModel: DashboardViewModel = hiltViewModel(),
     onDetail: (String) -> Unit,
 ) {
@@ -106,7 +106,7 @@ fun InspectorDashboardScreen(
             items = filteredItems,
             key = { it.id }
         ) { report ->
-            ReportListItem(
+            InspectionListItem(
                 report = report,
                 onClick = {
                     if (report.id.isNotBlank()) {

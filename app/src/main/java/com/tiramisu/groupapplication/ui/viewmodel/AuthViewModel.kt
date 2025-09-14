@@ -46,8 +46,8 @@ class AuthViewModel @Inject constructor(
     fun signUp(email: String, pass: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            val selectedRoleName = _uiState.value.selectedRole.name
-            authRepo.signUp(email, pass, selectedRoleName)
+            val selectedRole = _uiState.value.selectedRole
+            authRepo.signUp(email, pass, selectedRole)
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false, error = e.message) }
                 }

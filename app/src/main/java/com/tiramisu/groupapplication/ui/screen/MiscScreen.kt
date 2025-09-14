@@ -13,25 +13,21 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.tiramisu.groupapplication.domain.model.User
 import com.tiramisu.groupapplication.ui.component.NavBar
-import com.tiramisu.groupapplication.ui.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MiscScreen(
-    mainViewModel: MainViewModel,
+    user: User,
     navController: NavHostController,
     onLogout: () -> Unit,
 ) {
-    val user by mainViewModel.currentUser.collectAsState()
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -62,11 +58,11 @@ fun MiscScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Email: ${user?.email ?: "Unknown"}",
+                text = "Email: ${user.email}",
                 style = MaterialTheme.typography.bodyLarge
             )
             Text(
-                text = "Role: ${user?.role?.toString() ?: "Unknown"}",
+                text = "Role: ${user.role}",
                 style = MaterialTheme.typography.bodyLarge
             )
         }

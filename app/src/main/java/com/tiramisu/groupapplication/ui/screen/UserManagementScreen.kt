@@ -102,7 +102,7 @@ private fun UserRow(
     user: User,
     onChangeRole: (UserRole) -> Unit
 ) {
-    val currentRole = runCatching { UserRole.valueOf(user.role) }.getOrDefault(UserRole.INSPECTOR)
+    val currentRole = runCatching { user.role }.getOrDefault(UserRole.INSPECTOR)
     var menuExpanded by remember(user.uid) { mutableStateOf(false) }
 
     Card(

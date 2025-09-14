@@ -39,7 +39,7 @@ import com.tiramisu.groupapplication.domain.model.Inspection
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportListItem(
+fun InspectionListItem(
     report: Inspection,
     onClick: () -> Unit
 ) {
@@ -47,7 +47,7 @@ fun ReportListItem(
         onClick = onClick,
         enabled = report.id.isNotBlank(),
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surface,
         )

@@ -5,6 +5,7 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.CollectionReference
 import com.tiramisu.groupapplication.di.IoDispatcher
 import com.tiramisu.groupapplication.di.ProfileCollection
+import com.tiramisu.groupapplication.domain.enums.UserRole
 import com.tiramisu.groupapplication.domain.model.User
 import com.tiramisu.groupapplication.domain.repository.AuthRepository
 import kotlinx.coroutines.CoroutineDispatcher
@@ -40,7 +41,7 @@ class AuthRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun signUp(email: String, pass: String, role: String): Result<FirebaseUser> =
+    override suspend fun signUp(email: String, pass: String, role: UserRole): Result<FirebaseUser> =
         withContext(ioDispatcher) {
             runCatching {
                 val authResult = auth.createUserWithEmailAndPassword(email, pass).await()

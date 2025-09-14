@@ -24,7 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tiramisu.groupapplication.ui.component.DateRangeSheet
 import com.tiramisu.groupapplication.ui.component.Filter
 import com.tiramisu.groupapplication.ui.component.InspectionFilter
-import com.tiramisu.groupapplication.ui.component.ReportListItem
+import com.tiramisu.groupapplication.ui.component.InspectionListItem
 import com.tiramisu.groupapplication.ui.component.SearchTextField
 import com.tiramisu.groupapplication.ui.component.StatusPickerSheet
 import com.tiramisu.groupapplication.ui.component.TypePickerSheet
@@ -93,7 +93,7 @@ fun SupervisorDashboardScreen(
         }
 
         items(filteredItems) { report ->
-            ReportListItem(
+            InspectionListItem(
                 report = report,
                 onClick = {
                     if (report.id.isNotBlank()) {

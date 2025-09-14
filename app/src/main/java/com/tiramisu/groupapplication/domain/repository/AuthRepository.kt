@@ -1,6 +1,7 @@
 package com.tiramisu.groupapplication.domain.repository
 
 import com.google.firebase.auth.FirebaseUser
+import com.tiramisu.groupapplication.domain.enums.UserRole
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -23,7 +24,7 @@ interface AuthRepository {
      * Attempts to create a new user account with the given email, password and role.
      * @return A Result containing the new FirebaseUser on success or an exception on failure.
      */
-    suspend fun signUp(email: String, pass: String, role: String): Result<FirebaseUser>
+    suspend fun signUp(email: String, pass: String, role: UserRole): Result<FirebaseUser>
 
     /**
      * Signs out the currently authenticated user.

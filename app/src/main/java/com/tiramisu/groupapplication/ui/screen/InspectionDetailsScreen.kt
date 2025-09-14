@@ -50,7 +50,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.tiramisu.groupapplication.domain.enums.InspectionStatus
+import com.tiramisu.groupapplication.domain.enums.UserRole
 import com.tiramisu.groupapplication.domain.model.Inspection
+import com.tiramisu.groupapplication.domain.model.User
 import com.tiramisu.groupapplication.ui.component.AttachmentImage
 import com.tiramisu.groupapplication.ui.component.NavBar
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionDetailsEvent
@@ -64,7 +66,8 @@ import kotlin.time.Instant
 @Composable
 fun InspectionDetailsRoute(
     viewModel: InspectionDetailsViewModel = hiltViewModel(),
-    navController: NavHostController
+    navController: NavHostController,
+    user: User
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
@@ -102,7 +105,8 @@ fun InspectionDetailsRoute(
                 )
             }
         },
-        navController = navController
+        navController = navController,
+        user = user,
     )
 
     if (confirmDelete) {
@@ -129,6 +133,7 @@ fun InspectionDetailsRoute(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InspectionDetailsScreen(
+    user: User,
     state: InspectionDetailsState,
     onBack: () -> Unit = {},
     onDelete: () -> Unit = {},
@@ -139,7 +144,7 @@ fun InspectionDetailsScreen(
     val inspection = state.inspection
     val uid = state.userId
     val isEditingAllowed =
-        inspection?.status == InspectionStatus.PENDING_REVIEW && inspection.createdBy == uid
+        (inspection?.status == InspectionStatus.PENDING_REVIEW && inspection.createdBy == uid) || user.role == UserRole.ADMIN
 
     Scaffold(
         topBar = {

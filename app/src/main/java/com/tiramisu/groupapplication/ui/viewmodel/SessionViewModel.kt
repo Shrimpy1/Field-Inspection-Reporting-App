@@ -11,17 +11,19 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class MainViewModel @Inject constructor(
+class SessionViewModel @Inject constructor(
     internal val authRepo: AuthRepository,
     private val userRepo: UserRepository
 ) : ViewModel() {
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val currentUser: StateFlow<User?> = authRepo.currentUser
+    val sessionState: StateFlow<SessionState> = authRepo.currentUser
         .flatMapLatest { firebaseUser ->
             if (firebaseUser != null) {
                 userRepo.getUserProfile(firebaseUser.uid)
@@ -29,5 +31,16 @@ class MainViewModel @Inject constructor(
                 flowOf(null)
             }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+        .map { u -> if (u == null) SessionState.SignedOut else SessionState.SignedIn(u) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SessionState.Loading)
+
+    fun signOut() = viewModelScope.launch {
+        authRepo.signOut()
+    }
+}
+
+sealed interface SessionState {
+    data object Loading : SessionState
+    data object SignedOut : SessionState
+    data class SignedIn(val user: User) : SessionState
 }

@@ -14,35 +14,51 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.tiramisu.groupapplication.domain.enums.UserRole
+import com.tiramisu.groupapplication.domain.model.User
 import com.tiramisu.groupapplication.ui.component.ConnectivityToasts
 import com.tiramisu.groupapplication.ui.component.NavBar
 import com.tiramisu.groupapplication.ui.viewmodel.AppViewModel
-import com.tiramisu.groupapplication.ui.viewmodel.MainViewModel
-import kotlinx.coroutines.launch
+import com.tiramisu.groupapplication.ui.viewmodel.SessionState
+import com.tiramisu.groupapplication.ui.viewmodel.SessionViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App(
-    mainViewModel: MainViewModel = hiltViewModel(),
+    sessionViewModel: SessionViewModel = hiltViewModel(),
     appViewModel: AppViewModel = hiltViewModel(),
 ) {
-    val navController = rememberNavController()
+    val state by sessionViewModel.sessionState.collectAsStateWithLifecycle()
 
-    val user by mainViewModel.currentUser.collectAsStateWithLifecycle()
-    val coroutineScope = rememberCoroutineScope()
-    val authRepo = mainViewModel.authRepo
+    when (state) {
+        SessionState.Loading -> {} // simple progress or branded splash
+        SessionState.SignedOut -> AuthNavHost() // contains only Auth routes + its own navController
+        is SessionState.SignedIn -> AppNavHost(
+            user = (state as SessionState.SignedIn).user,
+            onLogout = { sessionViewModel.signOut() }
+        ) // contains Dashboard etc. + its own navController
+    }
 
+    ConnectivityToasts(viewModel = appViewModel)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppNavHost(
+    user: User,
+    navController: NavHostController = rememberNavController(),
+    onLogout: () -> Unit,
+) {
     NavHost(
         navController = navController,
         startDestination = Routes.Dashboard.route,
@@ -59,7 +75,7 @@ fun App(
                     TopAppBar(
                         title = {
                             Text(
-                                "Dashboard (${user?.role})",
+                                "Dashboard (${user.role})",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -67,7 +83,7 @@ fun App(
                     )
                 },
                 floatingActionButton = {
-                    if (user?.role == UserRole.INSPECTOR.name) {
+                    if (user.role == UserRole.INSPECTOR) {
                         FloatingActionButton(onClick = { navController.navigate(Routes.InspectionForm.route) }) {
                             Icon(Icons.Default.Add, contentDescription = "Add New Report")
                         }
@@ -76,20 +92,21 @@ fun App(
                 bottomBar = { NavBar(navController = navController) }
             ) { padding ->
                 Box(modifier = Modifier.padding(padding)) {
-                    when (user?.role) {
-                        UserRole.INSPECTOR.name -> InspectorDashboardScreen(
+                    when (user.role) {
+                        UserRole.INSPECTOR -> MainDashboard(
                             onDetail = { id ->
                                 navController.navigate(Routes.InspectionDetails.createRoute(id))
                             },
                         )
 
-                        UserRole.SUPERVISOR.name -> SupervisorDashboardScreen(onReportClick = { inspectionId ->
+                        UserRole.SUPERVISOR -> SupervisorDashboardScreen(onReportClick = { inspectionId ->
                             navController.navigate(Routes.Review.createRoute(inspectionId))
                         })
 
-                        UserRole.ADMIN.name -> AdminDashboardScreen(
+                        UserRole.ADMIN -> AdminDashboardScreen(
                             onNavigateToLogs = { navController.navigate(Routes.Logs.route) },
-                            onNavigateToUserList = { navController.navigate(Routes.UserList.route) }
+                            onNavigateToUserList = { navController.navigate(Routes.UserList.route) },
+                            onNavigateToInspection = { navController.navigate(Routes.AdminDashboard.route) }
                         )
                     }
                 }
@@ -104,7 +121,8 @@ fun App(
             )
         ) {
             InspectionDetailsRoute(
-                navController = navController
+                navController = navController,
+                user = user
             )
         }
 
@@ -156,9 +174,9 @@ fun App(
         // Misc
         composable(Routes.Misc.route) {
             MiscScreen(
-                mainViewModel = mainViewModel,
+                user = user,
                 navController = navController,
-                onLogout = { coroutineScope.launch { authRepo.signOut() } }
+                onLogout = onLogout
             )
         }
 
@@ -184,27 +202,33 @@ fun App(
                 onBack = { navController.popBackStack() },
                 onNavigateInspection = { id ->
                     navController.navigate(
-                        Routes.InspectionDetails.createRoute(
-                            id
-                        )
+                        if (user.role == UserRole.SUPERVISOR)
+                            Routes.Review.createRoute(id)
+                        else
+                            Routes.InspectionDetails.createRoute(id)
                     )
                 }
             )
         }
+
+        // Admin dashboard
+        composable(Routes.AdminDashboard.route) {
+            AdminInspectionRoute(navController = navController)
+        }
     }
+}
 
-    ConnectivityToasts(viewModel = appViewModel)
-
-    LaunchedEffect(user, navController.currentBackStackEntry) {
-        val currentRoute = navController.currentBackStackEntry?.destination?.route
-        if (user == null && currentRoute != Routes.Auth.route) {
-            navController.navigate(Routes.Auth.route) {
-                popUpTo(navController.graph.id) { inclusive = true }
-            }
-        } else if (user != null && currentRoute == Routes.Auth.route) {
-            navController.navigate(Routes.Dashboard.route) {
-                popUpTo(Routes.Auth.route) { inclusive = true }
-            }
+@Composable
+fun AuthNavHost(
+    navController: NavHostController = rememberNavController()
+) {
+    NavHost(
+        navController = navController,
+        startDestination = Routes.Auth.route,
+    ) {
+        // Auth
+        composable(Routes.Auth.route) {
+            AuthScreen()
         }
     }
 }
