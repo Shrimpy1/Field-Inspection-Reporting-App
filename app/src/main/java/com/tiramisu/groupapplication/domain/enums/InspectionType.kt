@@ -83,5 +83,6 @@ enum class InspectionType(val display: String, val category: String) {
 
     // General
     SITE_GENERAL("Site General", "General"),
-    OTHER("Other / Custom", "General")
+    OTHER("Other / Custom", "General"),
+    QUALITY("Quality", "General")
 }

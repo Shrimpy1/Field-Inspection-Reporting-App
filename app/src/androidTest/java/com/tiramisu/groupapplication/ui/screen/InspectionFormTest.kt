@@ -5,6 +5,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.navigation.compose.rememberNavController
+import com.tiramisu.groupapplication.domain.enums.InspectionType // Import the enum
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionFormData
 import com.tiramisu.groupapplication.ui.viewmodel.InspectionFormViewModel
 import io.mockk.every
@@ -21,16 +22,17 @@ class InspectionFormTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    // Use relaxed = true so we don't have to mock every single function
     private val mockViewModel: InspectionFormViewModel = mockk(relaxed = true)
+
+    // Keep a reference to the StateFlow to update it
+    private lateinit var fakeFormDataState: MutableStateFlow<InspectionFormData>
 
     @Before
     fun setup() {
         // GIVEN: A real StateFlow for the mock ViewModel's formData.
-        val fakeFormDataState = MutableStateFlow(InspectionFormData())
+        fakeFormDataState = MutableStateFlow(InspectionFormData())
         every { mockViewModel.formData } returns fakeFormDataState
-
-        // ADD THIS: GIVEN a real (but empty) SharedFlow for the mock ViewModel's events.
-        // This prevents the KotlinNothingValueException inside LaunchedEffect.
         val fakeEventsFlow = MutableSharedFlow<InspectionFormViewModel.UiEvent>()
         every { mockViewModel.events } returns fakeEventsFlow
     }
@@ -47,9 +49,20 @@ class InspectionFormTest {
             )
         }
 
-        // When: The user fills in all the required fields
-        composeTestRule.onNodeWithTag("type_input")
-            .performTextInput("Routine Maintenance")
+        // When: The user interacts with the "Type" field
+        // CHANGED: Instead of typing, we simulate a click,
+        // which would open the picker in a real scenario.
+        composeTestRule.onNodeWithTag("type_input").performClick()
+
+        // For this test, we can directly call the ViewModel function
+        // that would be triggered by the picker, to set the type state.
+        // This isolates the test from the picker's implementation details.
+        every { mockViewModel.setType(any()) } answers {
+            fakeFormDataState.value = fakeFormDataState.value.copy(type = firstArg())
+        }
+        mockViewModel.setType(InspectionType.SITE_GENERAL) // Simulate selecting a type
+
+        // And: The user fills in the rest of the fields
         composeTestRule.onNodeWithTag("title_input")
             .performTextInput("HVAC Unit Check")
         composeTestRule.onNodeWithTag("notes_input")
